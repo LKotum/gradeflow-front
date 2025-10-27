@@ -20,7 +20,6 @@ interface LoginProps {
 const Login = ({ onLogin }: LoginProps) => {
   const [mode, setMode] = useState<"ins" | "admin">("ins");
   const [ins, setIns] = useState("");
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +29,11 @@ const Login = ({ onLogin }: LoginProps) => {
     setLoading(true);
     setError(null);
     try {
+      const trimmedINS = ins.trim();
       const response =
         mode === "ins"
-          ? await loginByINS(ins.trim(), password)
-          : await loginAdmin(username.trim(), password);
+          ? await loginByINS(trimmedINS, password)
+          : await loginAdmin(trimmedINS, password);
       onLogin(response);
     } catch (err) {
       setError("Invalid credentials");
@@ -57,17 +57,15 @@ const Login = ({ onLogin }: LoginProps) => {
       </ButtonGroup>
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
-          {mode === "ins" ? (
-            <FormControl>
-              <FormLabel>INS</FormLabel>
-              <Input value={ins} onChange={(event) => setIns(event.target.value)} placeholder="INS-0001" isRequired />
-            </FormControl>
-          ) : (
-            <FormControl>
-              <FormLabel>Username</FormLabel>
-              <Input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="admin" isRequired />
-            </FormControl>
-          )}
+          <FormControl>
+            <FormLabel>INS</FormLabel>
+            <Input
+              value={ins}
+              onChange={(event) => setIns(event.target.value)}
+              placeholder="00000001"
+              isRequired
+            />
+          </FormControl>
           <FormControl>
             <FormLabel>Password</FormLabel>
             <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} isRequired />

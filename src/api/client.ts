@@ -8,7 +8,6 @@ export interface UserSummary {
   id: string;
   role: string;
   ins?: string;
-  username?: string;
   email?: string;
   firstName: string;
   lastName: string;
@@ -35,8 +34,8 @@ export const loginByINS = async (ins: string, password: string) => {
   return data;
 };
 
-export const loginAdmin = async (username: string, password: string) => {
-  const { data } = await api.post<AuthResponse>("/auth/login/admin", { username, password });
+export const loginAdmin = async (ins: string, password: string) => {
+  const { data } = await api.post<AuthResponse>("/auth/login/admin", { ins, password });
   return data;
 };
 
