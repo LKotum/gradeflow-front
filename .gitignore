@@ -1,0 +1,46 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Build outputs
+dist/
+build/
+
+# Vite
+.vite/
+.vite/*
+
+# Caches
+.cache/
+.parcel-cache/
+.eslintcache
+/.turbo
+/.turbo/*
+
+# Environment variables
+.env
+.env.*.local
+!.env.example
+
+# Coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS & editors
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Misc
+*.tgz
