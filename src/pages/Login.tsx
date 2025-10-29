@@ -9,7 +9,8 @@ import {
   Input,
   Stack,
   Alert,
-  AlertIcon
+  AlertIcon,
+  useColorModeValue
 } from "@chakra-ui/react";
 import { loginByINS, loginAdmin, type AuthResponse } from "../api/client";
 
@@ -36,29 +37,54 @@ const Login = ({ onLogin }: LoginProps) => {
           : await loginAdmin(trimmedINS, password);
       onLogin(response);
     } catch (err) {
-      setError("Invalid credentials");
+      setError("Неверные учётные данные");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box maxW="sm" mx="auto" mt={16} p={8} borderWidth="1px" borderRadius="lg">
+    <Box
+      maxW="sm"
+      mx="auto"
+      mt={16}
+      p={8}
+      borderWidth="1px"
+      borderRadius="xl"
+      boxShadow={useColorModeValue("lg", "dark-lg")}
+      bg={useColorModeValue("white", "gray.800")}
+      transition="transform 0.3s ease, box-shadow 0.3s ease"
+      _hover={{ transform: "translateY(-4px)", boxShadow: useColorModeValue("xl", "dark-xl") }}
+    >
       <Heading size="lg" mb={6} textAlign="center">
-        Sign in
+        Вход в систему
       </Heading>
       <ButtonGroup isAttached mb={6} w="100%">
-        <Button flexGrow={1} colorScheme={mode === "ins" ? "purple" : undefined} onClick={() => setMode("ins")}>
-          Staff / Teacher / Student
+        <Button
+          flexGrow={1}
+          colorScheme="brand"
+          variant={mode === "ins" ? "solid" : "outline"}
+          onClick={() => setMode("ins")}
+          transition="transform 0.2s ease"
+          _hover={{ transform: "translateY(-2px)" }}
+        >
+          Сотрудник/Студент
         </Button>
-        <Button flexGrow={1} colorScheme={mode === "admin" ? "purple" : undefined} onClick={() => setMode("admin")}>
-          Admin
+        <Button
+          flexGrow={1}
+          colorScheme="brand"
+          variant={mode === "admin" ? "solid" : "outline"}
+          onClick={() => setMode("admin")}
+          transition="transform 0.2s ease"
+          _hover={{ transform: "translateY(-2px)" }}
+        >
+          Администратор
         </Button>
       </ButtonGroup>
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl>
-            <FormLabel>INS</FormLabel>
+            <FormLabel>ИНС</FormLabel>
             <Input
               value={ins}
               onChange={(event) => setIns(event.target.value)}
@@ -67,11 +93,11 @@ const Login = ({ onLogin }: LoginProps) => {
             />
           </FormControl>
           <FormControl>
-            <FormLabel>Password</FormLabel>
+            <FormLabel>Пароль</FormLabel>
             <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} isRequired />
           </FormControl>
-          <Button type="submit" colorScheme="purple" isLoading={loading}>
-            Login
+          <Button type="submit" colorScheme="brand" isLoading={loading} transition="transform 0.2s ease" _hover={{ transform: "translateY(-2px)" }}>
+            Войти
           </Button>
           {error && (
             <Alert status="error">

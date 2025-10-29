@@ -12,7 +12,8 @@ import {
   Tbody,
   Tr,
   Th,
-  Td
+  Td,
+  useColorModeValue
 } from "@chakra-ui/react";
 import { fetchDeanGroups, createDeanGroup, fetchGroupRanking } from "../api/client";
 
@@ -24,8 +25,8 @@ const DeanGroups = () => {
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
-    const [groupsData, rankingData] = await Promise.all([fetchDeanGroups(), fetchGroupRanking()]);
-    setGroups(groupsData);
+    const [groupsData, rankingData] = await Promise.all([fetchDeanGroups({ limit: 100, offset: 0 }), fetchGroupRanking()]);
+    setGroups(groupsData.data ?? []);
     setRanking(rankingData.items ?? []);
   };
 
@@ -43,37 +44,46 @@ const DeanGroups = () => {
     setLoading(false);
   };
 
+  const cardBg = useColorModeValue("white", "gray.800");
+  const cardShadow = useColorModeValue("sm", "sm-dark");
+
   return (
     <Box p={6}>
       <Heading size="lg" mb={4}>
-        Groups
+        Учебные группы
       </Heading>
       <Stack direction={{ base: "column", md: "row" }} spacing={6} align="flex-start">
-        <Box flex={1} borderWidth="1px" borderRadius="lg" p={4} as="form" onSubmit={handleSubmit}>
+        <Box flex={1} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow} as="form" onSubmit={handleSubmit}>
           <Heading size="md" mb={4}>
-            Create Group
+            Создать группу
           </Heading>
           <FormControl isRequired mb={3}>
-            <FormLabel>Name</FormLabel>
+            <FormLabel>Название</FormLabel>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </FormControl>
           <FormControl mb={4}>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>Описание</FormLabel>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} />
           </FormControl>
-          <Button type="submit" colorScheme="purple" isLoading={loading}>
-            Create
+          <Button
+            type="submit"
+            colorScheme="brand"
+            isLoading={loading}
+            transition="transform 0.2s ease, box-shadow 0.2s ease"
+            _hover={{ transform: "translateY(-2px)", boxShadow: "md" }}
+          >
+            Сохранить
           </Button>
         </Box>
-        <Box flex={2} borderWidth="1px" borderRadius="lg" p={4} overflowX="auto">
+        <Box flex={2} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow} overflowX="auto">
           <Heading size="md" mb={4}>
-            Existing Groups
+            Список групп
           </Heading>
           <Table size="sm">
             <Thead>
               <Tr>
-                <Th>Name</Th>
-                <Th>Description</Th>
+                <Th>Название</Th>
+                <Th>Описание</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -86,15 +96,15 @@ const DeanGroups = () => {
             </Tbody>
           </Table>
         </Box>
-        <Box flex={1} borderWidth="1px" borderRadius="lg" p={4} overflowX="auto">
+        <Box flex={1} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow} overflowX="auto">
           <Heading size="md" mb={4}>
-            Ranking
+            Рейтинг групп
           </Heading>
           <Table size="sm">
             <Thead>
               <Tr>
-                <Th>Group</Th>
-                <Th>Average</Th>
+                <Th>Группа</Th>
+                <Th>Средний балл</Th>
               </Tr>
             </Thead>
             <Tbody>
