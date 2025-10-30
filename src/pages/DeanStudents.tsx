@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from "react";
 import {
   Alert,
   AlertIcon,
@@ -41,6 +41,7 @@ import {
   fetchDeanGroups,
   fetchDeanStudents,
 } from "../api/client";
+import { formatFullName } from "../utils/name";
 
 const PAGE_LIMIT = 20;
 
@@ -56,6 +57,7 @@ const DeanStudents = () => {
     password: "",
     firstName: "",
     lastName: "",
+    middleName: "",
     email: "",
     groupId: "",
   });
@@ -78,6 +80,8 @@ const DeanStudents = () => {
 
   const cardBg = useColorModeValue("white", "gray.800");
   const tableBg = useColorModeValue("gray.100", "gray.700");
+  const studentSelectionFieldId = useId();
+  const studentSelectionLabelId = `${studentSelectionFieldId}-label`;
 
   const loadStudents = useCallback(
     async (offset = 0, query = search) => {
@@ -131,15 +135,19 @@ const DeanStudents = () => {
     try {
       await createDeanStudent({
         password: studentForm.password,
-        firstName: studentForm.firstName,
-        lastName: studentForm.lastName,
-        email: studentForm.email || undefined,
+        firstName: studentForm.firstName.trim(),
+        lastName: studentForm.lastName.trim(),
+        middleName: studentForm.middleName?.trim()
+          ? studentForm.middleName.trim()
+          : undefined,
+        email: studentForm.email?.trim() ? studentForm.email.trim() : undefined,
         groupId: studentForm.groupId || undefined,
       });
       setStudentForm({
         password: "",
         firstName: "",
         lastName: "",
+        middleName: "",
         email: "",
         groupId: "",
       });
@@ -207,7 +215,11 @@ const DeanStudents = () => {
     setDetachContext({
       studentId: student.id,
       groupId,
-      name: `${student.lastName} ${student.firstName}`,
+      name: formatFullName(
+        student.lastName,
+        student.firstName,
+        student.middleName
+      ),
     });
     detachDialog.onOpen();
   };
@@ -239,7 +251,7 @@ const DeanStudents = () => {
 
   return (
     <Box p={6}>
-      <Heading size="lg" mb={4}>
+      <Heading size="lg" mb={6}>
         Управление студентами
       </Heading>
       {error && (
@@ -284,6 +296,16 @@ const DeanStudents = () => {
               onChange={(e) =>
                 setStudentForm({ ...studentForm, lastName: e.target.value })
               }
+            />
+          </FormControl>
+          <FormControl>
+            <FormLabel>Отчество</FormLabel>
+            <Input
+              value={studentForm.middleName}
+              onChange={(e) =>
+                setStudentForm({ ...studentForm, middleName: e.target.value })
+              }
+              placeholder="Необязательно"
             />
           </FormControl>
           <FormControl>
@@ -354,16 +376,27 @@ const DeanStudents = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Студенты</FormLabel>
+          <FormControl>
+            <FormLabel id={studentSelectionLabelId}>
+              Студенты <Text as="span" color="red.500">*</Text>
+            </FormLabel>
             <CheckboxGroup
+              aria-labelledby={studentSelectionLabelId}
               value={selectedStudents}
               onChange={(values) => setSelectedStudents(values as string[])}
             >
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={1}>
                 {students.map((student: any) => (
-                  <Checkbox key={student.id} value={student.id}>
-                    {student.lastName} {student.firstName}
+                  <Checkbox
+                    key={student.id}
+                    value={student.id}
+                    id={`${studentSelectionFieldId}-${student.id}`}
+                  >
+                    {formatFullName(
+                      student.lastName,
+                      student.firstName,
+                      student.middleName
+                    )}
                   </Checkbox>
                 ))}
               </SimpleGrid>
@@ -487,7 +520,11 @@ const DeanStudents = () => {
                     return (
                       <Tr key={student.id}>
                         <Td>
-                          {student.lastName} {student.firstName}
+                          {formatFullName(
+                            student.lastName,
+                            student.firstName,
+                            student.middleName
+                          )}
                         </Td>
                         <Td>{student.ins ?? "—"}</Td>
                         <Td>{student.email ?? "—"}</Td>

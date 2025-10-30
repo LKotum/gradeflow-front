@@ -49,7 +49,7 @@ const DeanGroups = () => {
 
   return (
     <Box p={6}>
-      <Heading size="lg" mb={4}>
+      <Heading size="lg" mb={6}>
         Учебные группы
       </Heading>
       <Stack direction={{ base: "column", md: "row" }} spacing={6} align="flex-start">

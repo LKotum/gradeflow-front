@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react";
+import type { AxiosError } from "axios";
 import {
+  Avatar,
   Box,
   Heading,
   Stack,
   Text,
   Tag,
   TagLabel,
-  SimpleGrid,
   useColorModeValue,
   Spinner,
   HStack,
 } from "@chakra-ui/react";
 import { fetchTeacherDashboard, fetchTeacherSchedule } from "../api/client";
+import { formatFullName } from "../utils/name";
 
 const TeacherDashboard = () => {
   const [data, setData] = useState<any | null>(null);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const cardBg = useColorModeValue("white", "gray.800");
+  const cardShadow = useColorModeValue("sm", "sm-dark");
 
   useEffect(() => {
     const load = async () => {
@@ -34,7 +38,14 @@ const TeacherDashboard = () => {
         const scheduleData = await fetchTeacherSchedule(params);
         setSchedule(Array.isArray(scheduleData) ? scheduleData : []);
       } catch (err) {
-        setScheduleError("Не удалось загрузить данные преподавателя");
+        const axiosError = err as AxiosError;
+        if (axiosError?.response?.status === 401) {
+          setScheduleError(
+            "Требуется авторизация. Пожалуйста, войдите в систему повторно."
+          );
+        } else {
+          setScheduleError("Не удалось загрузить данные преподавателя");
+        }
       } finally {
         setScheduleLoading(false);
       }
@@ -45,16 +56,19 @@ const TeacherDashboard = () => {
   if (!data) {
     return (
       <Box p={6}>
-        <HStack spacing={3}>
-          <Spinner size="sm" />
-          <Text color="gray.500">Загрузка данных...</Text>
-        </HStack>
+        {scheduleError ? (
+          <Text color="red.400">{scheduleError}</Text>
+        ) : (
+          <HStack spacing={3}>
+            <Spinner size="sm" />
+            <Text color="gray.500">Загрузка данных...</Text>
+          </HStack>
+        )}
       </Box>
     );
   }
 
-  const cardBg = useColorModeValue("white", "gray.800");
-  const cardShadow = useColorModeValue("sm", "sm-dark");
+  const subjects = Array.isArray(data.subjects) ? data.subjects : [];
 
   return (
     <Box p={6}>
@@ -71,40 +85,70 @@ const TeacherDashboard = () => {
         transition="transform 0.2s ease, box-shadow 0.2s ease"
         _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
       >
-        <Heading size="md" mb={2}>
-          {data.profile.firstName} {data.profile.lastName}
-        </Heading>
-        <Text>ИНС: {data.profile.ins ?? "—"}</Text>
-        <Text>Почта: {data.profile.email ?? "—"}</Text>
+        <HStack align="flex-start" spacing={5} flexWrap="wrap">
+          <Avatar
+            size="lg"
+            bg="brand.500"
+            name={formatFullName(
+              data.profile.lastName,
+              data.profile.firstName,
+              data.profile.middleName
+            )}
+            src={data.profile.avatarUrl ?? undefined}
+          />
+          <Stack spacing={1.5}>
+            <Heading size="md">
+              {formatFullName(
+                data.profile.lastName,
+                data.profile.firstName,
+                data.profile.middleName
+              )}
+            </Heading>
+            <Text>ИНС: {data.profile.ins ?? "—"}</Text>
+            <Text>Почта: {data.profile.email ?? "—"}</Text>
+          </Stack>
+        </HStack>
       </Box>
       <Heading size="md" mb={3}>
         Закреплённые предметы
       </Heading>
-      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-        {data.subjects.map((item: any) => (
+      <Stack spacing={4}>
+        {subjects.length === 0 ? (
           <Box
-            key={item.subject.id}
             borderWidth="1px"
             borderRadius="xl"
-            p={6}
+            p={4}
             bg={cardBg}
             boxShadow={cardShadow}
-            transition="transform 0.2s ease, box-shadow 0.2s ease"
-            _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
           >
-            <Heading size="sm" mb={2}>
-              {item.subject.name}
-            </Heading>
-            <Stack direction="row" spacing={2} wrap="wrap">
-              {item.groups.map((group: any) => (
-                <Tag key={group.id} colorScheme="brand">
-                  <TagLabel>{group.name}</TagLabel>
-                </Tag>
-              ))}
-            </Stack>
+            <Text color="gray.500">Закреплённых предметов пока нет</Text>
           </Box>
-        ))}
-      </SimpleGrid>
+        ) : (
+          subjects.map((item: any) => (
+            <Box
+              key={item.subject.id}
+              borderWidth="1px"
+              borderRadius="xl"
+              p={6}
+              bg={cardBg}
+              boxShadow={cardShadow}
+              transition="transform 0.2s ease, box-shadow 0.2s ease"
+              _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
+            >
+              <Heading size="sm" mb={2}>
+                {item.subject.name}
+              </Heading>
+              <Stack direction="row" spacing={2} wrap="wrap">
+                {item.groups.map((group: any) => (
+                  <Tag key={group.id} colorScheme="brand">
+                    <TagLabel>{group.name}</TagLabel>
+                  </Tag>
+                ))}
+              </Stack>
+            </Box>
+          ))
+        )}
+      </Stack>
 
       <Heading size="md" mt={8} mb={3}>
         Ближайшие занятия

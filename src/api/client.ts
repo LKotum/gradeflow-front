@@ -38,6 +38,33 @@ export const setAuthToken = (token: string | null) => {
   }
 };
 
+api.interceptors.request.use((config) => {
+  try {
+    const raw = window.localStorage.getItem("gradeflow.auth"); // тот самый ключ
+    if (raw) {
+      const parsed = JSON.parse(raw) as { accessToken?: string };
+      if (parsed?.accessToken) {
+        config.headers = config.headers ?? {};
+        (config.headers as any).Authorization = `Bearer ${parsed.accessToken}`;
+      }
+    }
+  } catch {}
+  return config;
+});
+
+// (необязательно, но удобно) — если сервер вернул 401, можно реагировать
+// api.interceptors.response.use(
+//   (res) => res,
+//   (err) => {
+//     if (err?.response?.status === 401) {
+//       // например, можно очистить storage и отправить на экран логина
+//       // window.localStorage.removeItem("gradeflow.auth");
+//       // location.reload();
+//     }
+//     return Promise.reject(err);
+//   }
+// );
+
 export const loginByINS = async (ins: string, password: string) => {
   const { data } = await api.post<AuthResponse>("/auth/login/ins", {
     ins,
@@ -46,12 +73,30 @@ export const loginByINS = async (ins: string, password: string) => {
   return data;
 };
 
-export const loginAdmin = async (ins: string, password: string) => {
-  const { data } = await api.post<AuthResponse>("/auth/login/admin", {
-    ins,
-    password,
+export const fetchProfile = async () => {
+  const { data } = await api.get<UserSummary>("/profile");
+  return data;
+};
+
+export const uploadProfileAvatar = async (file: File) => {
+  const formData = new FormData();
+  formData.append("avatar", file);
+  const { data } = await api.put<UserSummary>("/profile/avatar", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
+};
+
+export const deleteProfileAvatar = async () => {
+  const { data } = await api.delete<UserSummary>("/profile/avatar");
+  return data;
+};
+
+export const changePassword = async (payload: {
+  currentPassword: string;
+  newPassword: string;
+}) => {
+  await api.patch("/auth/password", payload);
 };
 
 export const fetchTeacherDashboard = async () => {
@@ -190,6 +235,14 @@ export const assignTeacherToSubject = async (
   payload: { teacherId: string }
 ) => {
   await api.post(`/dean/subjects/${subjectId}/assign`, payload);
+};
+
+export const fetchSubjectTeachers = async (subjectId: string) => {
+  if (!subjectId) {
+    return [];
+  }
+  const { data } = await api.get(`/dean/subjects/${subjectId}/teachers`);
+  return data;
 };
 
 export const attachGroupToSubject = async (

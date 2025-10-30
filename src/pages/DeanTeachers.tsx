@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useId } from "react";
 import {
   Alert,
   AlertIcon,
@@ -25,17 +25,21 @@ import {
   Thead,
   Tr,
   useColorModeValue,
+  useToast,
 } from "@chakra-ui/react";
 import { SearchIcon } from "@chakra-ui/icons";
+import type { AxiosError } from "axios";
 import {
   assignTeacherToSubject,
   createDeanTeacher,
   detachTeacherFromSubject,
   fetchDeanGroups,
   fetchDeanSubjects,
+  fetchSubjectTeachers,
   fetchDeanTeachers,
   scheduleSession,
 } from "../api/client";
+import { formatFullName } from "../utils/name";
 
 const PAGE_LIMIT = 20;
 
@@ -52,6 +56,7 @@ const DeanTeachers = () => {
     password: "",
     firstName: "",
     lastName: "",
+    middleName: "",
     email: "",
   });
   const [assignmentForm, setAssignmentForm] = useState({
@@ -70,6 +75,10 @@ const DeanTeachers = () => {
     subjectId: "",
     teacherId: "",
   });
+  const [assignedTeachersBySubject, setAssignedTeachersBySubject] = useState<
+    Record<string, any[]>
+  >({});
+  const [loadingSubjectId, setLoadingSubjectId] = useState<string | null>(null);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -78,6 +87,17 @@ const DeanTeachers = () => {
 
   const cardBg = useColorModeValue("white", "gray.800");
   const tableBg = useColorModeValue("gray.100", "gray.700");
+  const sessionGroupsFieldId = useId();
+  const sessionGroupsLabelId = `${sessionGroupsFieldId}-label`;
+  const toast = useToast();
+  const detachTeachers =
+    assignedTeachersBySubject[detachForm.subjectId] ?? [];
+  const sessionAssignedTeachers =
+    assignedTeachersBySubject[sessionForm.subjectId] ?? [];
+  const detachTeachersLoading =
+    !!detachForm.subjectId && loadingSubjectId === detachForm.subjectId;
+  const sessionTeachersLoading =
+    !!sessionForm.subjectId && loadingSubjectId === sessionForm.subjectId;
 
   const loadTeachers = useCallback(
     async (offset = 0, query = teacherSearch) => {
@@ -108,6 +128,33 @@ const DeanTeachers = () => {
     [assignmentForm.teacherId, teacherSearch]
   );
 
+  const loadAssignedTeachers = useCallback(async (subjectId: string) => {
+    if (!subjectId) {
+      return [];
+    }
+    setLoadingSubjectId(subjectId);
+    try {
+      const data = await fetchSubjectTeachers(subjectId);
+      const list = Array.isArray(data) ? data : [];
+      setAssignedTeachersBySubject((prev) => ({
+        ...prev,
+        [subjectId]: list,
+      }));
+      return list;
+    } catch (subjectError) {
+      console.error(subjectError);
+      setAssignedTeachersBySubject((prev) => ({
+        ...prev,
+        [subjectId]: [],
+      }));
+      return [];
+    } finally {
+      setLoadingSubjectId((current) =>
+        current === subjectId ? null : current
+      );
+    }
+  }, []);
+
   const loadCatalogs = useCallback(async () => {
     try {
       const [subjectsData, groupsData] = await Promise.all([
@@ -136,11 +183,20 @@ const DeanTeachers = () => {
     try {
       await createDeanTeacher({
         password: teacherForm.password,
-        firstName: teacherForm.firstName,
-        lastName: teacherForm.lastName,
-        email: teacherForm.email || undefined,
+        firstName: teacherForm.firstName.trim(),
+        lastName: teacherForm.lastName.trim(),
+        middleName: teacherForm.middleName?.trim()
+          ? teacherForm.middleName.trim()
+          : undefined,
+        email: teacherForm.email?.trim() ? teacherForm.email.trim() : undefined,
       });
-      setTeacherForm({ password: "", firstName: "", lastName: "", email: "" });
+      setTeacherForm({
+        password: "",
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        email: "",
+      });
       await loadTeachers(teachersMeta.offset, teacherSearch);
     } catch (err) {
       setError("Не удалось создать преподавателя");
@@ -151,16 +207,46 @@ const DeanTeachers = () => {
 
   const handleAssignmentSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!assignmentForm.subjectId || !assignmentForm.teacherId) return;
+    const { subjectId, teacherId } = assignmentForm;
+    if (!subjectId || !teacherId) {
+      toast({
+        title: "Выберите предмет и преподавателя",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
     setFormLoading(true);
     setError(null);
     try {
-      await assignTeacherToSubject(assignmentForm.subjectId, {
-        teacherId: assignmentForm.teacherId,
+      await assignTeacherToSubject(subjectId, {
+        teacherId,
       });
-      setAssignmentForm({ subjectId: "", teacherId: "" });
+      if (subjectId) {
+        await loadAssignedTeachers(subjectId);
+      }
+      setAssignmentForm((prev) => ({ ...prev, teacherId: "" }));
+      toast({
+        title: "Преподаватель назначен",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+      });
     } catch (err) {
-      setError("Не удалось назначить преподавателя на предмет");
+      const axiosError = err as AxiosError<{ message?: string; error?: string }>;
+      const message =
+        axiosError?.response?.data?.message ??
+        axiosError?.response?.data?.error ??
+        "Не удалось назначить преподавателя на предмет";
+      setError(message);
+      toast({
+        title: "Ошибка назначения",
+        description: message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
     } finally {
       setFormLoading(false);
     }
@@ -204,17 +290,16 @@ const DeanTeachers = () => {
 
   const handleDetachSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!detachForm.subjectId || !detachForm.teacherId) {
+    const { subjectId, teacherId } = detachForm;
+    if (!subjectId || !teacherId) {
       return;
     }
     setFormLoading(true);
     setError(null);
     try {
-      await detachTeacherFromSubject(
-        detachForm.subjectId,
-        detachForm.teacherId
-      );
-      setDetachForm({ subjectId: "", teacherId: "" });
+      await detachTeacherFromSubject(subjectId, teacherId);
+      await loadAssignedTeachers(subjectId);
+      setDetachForm({ subjectId, teacherId: "" });
     } catch (err) {
       setError("Не удалось открепить преподавателя от предмета");
     } finally {
@@ -261,7 +346,7 @@ const DeanTeachers = () => {
 
   return (
     <Box p={6}>
-      <Heading size="lg" mb={4}>
+      <Heading size="lg" mb={6}>
         Управление преподавателями
       </Heading>
       {error && (
@@ -306,6 +391,16 @@ const DeanTeachers = () => {
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, lastName: e.target.value })
               }
+            />
+          </FormControl>
+          <FormControl>
+            <FormLabel>Отчество</FormLabel>
+            <Input
+              value={teacherForm.middleName}
+              onChange={(e) =>
+                setTeacherForm({ ...teacherForm, middleName: e.target.value })
+              }
+              placeholder="Необязательно"
             />
           </FormControl>
           <FormControl>
@@ -379,12 +474,21 @@ const DeanTeachers = () => {
             >
               {teachers.map((teacher: any) => (
                 <option key={teacher.id} value={teacher.id}>
-                  {teacher.lastName} {teacher.firstName}
+                  {formatFullName(
+                    teacher.lastName,
+                    teacher.firstName,
+                    teacher.middleName
+                  )}
                 </option>
               ))}
             </Select>
           </FormControl>
-          <Button type="submit" colorScheme="brand" isLoading={formLoading}>
+          <Button
+            type="submit"
+            colorScheme="brand"
+            isLoading={formLoading}
+            isDisabled={!assignmentForm.subjectId || !assignmentForm.teacherId}
+          >
             Назначить
           </Button>
         </Stack>
@@ -407,12 +511,13 @@ const DeanTeachers = () => {
             <Select
               placeholder="Выберите предмет"
               value={detachForm.subjectId}
-              onChange={(e) =>
-                setDetachForm((prev) => ({
-                  ...prev,
-                  subjectId: e.target.value,
-                }))
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setDetachForm({ subjectId: value, teacherId: "" });
+                if (value && !assignedTeachersBySubject[value]) {
+                  void loadAssignedTeachers(value);
+                }
+              }}
             >
               {subjectOptions.map((subject) => (
                 <option key={subject.id} value={subject.id}>
@@ -424,7 +529,15 @@ const DeanTeachers = () => {
           <FormControl isRequired>
             <FormLabel>Преподаватель</FormLabel>
             <Select
-              placeholder="Выберите преподавателя"
+              placeholder={
+                !detachForm.subjectId
+                  ? "Сначала выберите предмет"
+                  : detachTeachersLoading
+                  ? "Загрузка..."
+                  : detachTeachers.length === 0
+                  ? "Назначенных преподавателей нет"
+                  : "Выберите преподавателя"
+              }
               value={detachForm.teacherId}
               onChange={(e) =>
                 setDetachForm((prev) => ({
@@ -432,13 +545,37 @@ const DeanTeachers = () => {
                   teacherId: e.target.value,
                 }))
               }
+              isDisabled={
+                !detachForm.subjectId ||
+                detachTeachersLoading ||
+                detachTeachers.length === 0
+              }
             >
-              {teachers.map((teacher: any) => (
+              {detachTeachers.map((teacher: any) => (
                 <option key={teacher.id} value={teacher.id}>
-                  {teacher.lastName} {teacher.firstName}
+                  {formatFullName(
+                    teacher.lastName,
+                    teacher.firstName,
+                    teacher.middleName
+                  )}
                 </option>
               ))}
             </Select>
+            {detachForm.subjectId && detachTeachersLoading && (
+              <HStack spacing={2} mt={2}>
+                <Spinner size="sm" />
+                <Text fontSize="sm" color="gray.500">
+                  Загрузка списка назначенных преподавателей...
+                </Text>
+              </HStack>
+            )}
+            {detachForm.subjectId &&
+              !detachTeachersLoading &&
+              detachTeachers.length === 0 && (
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  Для выбранного предмета нет назначенных преподавателей.
+                </Text>
+              )}
           </FormControl>
           <Button
             type="submit"
@@ -471,9 +608,18 @@ const DeanTeachers = () => {
             <Select
               placeholder="Выберите предмет"
               value={sessionForm.subjectId}
-              onChange={(e) =>
-                setSessionForm({ ...sessionForm, subjectId: e.target.value })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setSessionForm((prev) => ({
+                  ...prev,
+                  subjectId: value,
+                  teacherId: "",
+                  groupIds: [],
+                }));
+                if (value && !assignedTeachersBySubject[value]) {
+                  void loadAssignedTeachers(value);
+                }
+              }}
             >
               {subjectOptions.map((subject) => (
                 <option key={subject.id} value={subject.id}>
@@ -485,18 +631,50 @@ const DeanTeachers = () => {
           <FormControl isRequired>
             <FormLabel>Преподаватель</FormLabel>
             <Select
-              placeholder="Выберите преподавателя"
+              placeholder={
+                !sessionForm.subjectId
+                  ? "Сначала выберите предмет"
+                  : sessionTeachersLoading
+                  ? "Загрузка..."
+                  : sessionAssignedTeachers.length === 0
+                  ? "Нет назначенных преподавателей"
+                  : "Выберите преподавателя"
+              }
               value={sessionForm.teacherId}
               onChange={(e) =>
                 setSessionForm({ ...sessionForm, teacherId: e.target.value })
               }
+              isDisabled={
+                !sessionForm.subjectId ||
+                sessionTeachersLoading ||
+                sessionAssignedTeachers.length === 0
+              }
             >
-              {teachers.map((teacher: any) => (
+              {sessionAssignedTeachers.map((teacher: any) => (
                 <option key={teacher.id} value={teacher.id}>
-                  {teacher.lastName} {teacher.firstName}
+                  {formatFullName(
+                    teacher.lastName,
+                    teacher.firstName,
+                    teacher.middleName
+                  )}
                 </option>
               ))}
             </Select>
+            {sessionForm.subjectId && sessionTeachersLoading && (
+              <HStack spacing={2} mt={2}>
+                <Spinner size="sm" />
+                <Text fontSize="sm" color="gray.500">
+                  Загрузка преподавателей по предмету...
+                </Text>
+              </HStack>
+            )}
+            {sessionForm.subjectId &&
+              !sessionTeachersLoading &&
+              sessionAssignedTeachers.length === 0 && (
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  Для выбранного предмета пока нет назначенных преподавателей.
+                </Text>
+              )}
           </FormControl>
           <FormControl isRequired>
             <FormLabel>Дата</FormLabel>
@@ -534,9 +712,12 @@ const DeanTeachers = () => {
             placeholder="Например, Лабораторная работа №1"
           />
         </FormControl>
-        <FormControl isRequired>
-          <FormLabel>Группы</FormLabel>
+        <FormControl>
+          <FormLabel id={sessionGroupsLabelId}>
+            Группы <Text as="span" color="red.500">*</Text>
+          </FormLabel>
           <CheckboxGroup
+            aria-labelledby={sessionGroupsLabelId}
             value={sessionForm.groupIds}
             onChange={(values) =>
               setSessionForm({ ...sessionForm, groupIds: values as string[] })
@@ -544,7 +725,11 @@ const DeanTeachers = () => {
           >
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={2}>
               {groupOptions.map((group) => (
-                <Checkbox key={group.id} value={group.id}>
+                <Checkbox
+                  key={group.id}
+                  value={group.id}
+                  id={`${sessionGroupsFieldId}-${group.id}`}
+                >
                   {group.label}
                 </Checkbox>
               ))}
@@ -655,7 +840,11 @@ const DeanTeachers = () => {
                   teachers.map((teacher: any) => (
                     <Tr key={teacher.id}>
                       <Td>
-                        {teacher.lastName} {teacher.firstName}
+                        {formatFullName(
+                          teacher.lastName,
+                          teacher.firstName,
+                          teacher.middleName
+                        )}
                       </Td>
                       <Td>{teacher.ins ?? "—"}</Td>
                       <Td>{teacher.email ?? "—"}</Td>

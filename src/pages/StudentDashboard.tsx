@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
+import type { AxiosError } from "axios";
 import {
+  Avatar,
   Badge,
   Box,
   Center,
   Heading,
   HStack,
-  SimpleGrid,
   Spinner,
   Stack,
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { fetchStudentDashboard, fetchStudentSchedule } from "../api/client";
+import { formatFullName } from "../utils/name";
 
 const StudentDashboard = () => {
   const [data, setData] = useState<any | null>(null);
@@ -19,6 +21,8 @@ const StudentDashboard = () => {
   const [schedule, setSchedule] = useState<any[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const cardBg = useColorModeValue("white", "gray.800");
+  const cardShadow = useColorModeValue("sm", "sm-dark");
 
   useEffect(() => {
     const load = async () => {
@@ -34,7 +38,14 @@ const StudentDashboard = () => {
         });
         setSchedule(Array.isArray(scheduleData) ? scheduleData : []);
       } catch (err) {
-        setScheduleError("Не удалось загрузить данные профиля");
+        const axiosError = err as AxiosError;
+        if (axiosError?.response?.status === 401) {
+          setScheduleError(
+            "Требуется авторизация. Пожалуйста, войдите в систему повторно."
+          );
+        } else {
+          setScheduleError("Не удалось загрузить данные профиля");
+        }
       } finally {
         setLoading(false);
         setScheduleLoading(false);
@@ -42,9 +53,6 @@ const StudentDashboard = () => {
     };
     load();
   }, []);
-
-  const cardBg = useColorModeValue("white", "gray.800");
-  const cardShadow = useColorModeValue("sm", "sm-dark");
 
   if (loading) {
     return (
@@ -57,7 +65,9 @@ const StudentDashboard = () => {
   if (!data) {
     return (
       <Center py={16}>
-        <Text color="gray.500">Не удалось загрузить данные профиля</Text>
+        <Text color={scheduleError ? "red.400" : "gray.500"}>
+          {scheduleError ?? "Не удалось загрузить данные профиля"}
+        </Text>
       </Center>
     );
   }
@@ -93,21 +103,42 @@ const StudentDashboard = () => {
         transition="transform 0.2s ease, box-shadow 0.2s ease"
         _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
       >
-        <Text>
-          <strong>ФИО:</strong> {data.profile.firstName} {data.profile.lastName}
-        </Text>
-        <Text>
-          <strong>Почта:</strong> {data.profile.email ?? "—"}
-        </Text>
-        <Text>
-          <strong>Группа:</strong> {data.group ? data.group.name : "—"}
-        </Text>
+        <HStack align="flex-start" spacing={5} flexWrap="wrap">
+          <Avatar
+            size="lg"
+            bg="brand.500"
+            name={formatFullName(
+              data.profile.lastName,
+              data.profile.firstName,
+              data.profile.middleName
+            )}
+            src={data.profile.avatarUrl ?? undefined}
+          />
+          <Stack spacing={2}>
+            <Text fontWeight="semibold">
+              {formatFullName(
+                data.profile.lastName,
+                data.profile.firstName,
+                data.profile.middleName
+              )}
+            </Text>
+            <Text>
+              <strong>Почта:</strong> {data.profile.email ?? "—"}
+            </Text>
+            <Text>
+              <strong>Группа:</strong> {data.group ? data.group.name : "—"}
+            </Text>
+            <Text>
+              <strong>ИНС:</strong> {data.profile.ins ?? "—"}
+            </Text>
+          </Stack>
+        </HStack>
       </Stack>
 
       <Heading size="md" mt={8} mb={3}>
         Быстрая сводка
       </Heading>
-      <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4} maxW="3xl">
+      <Stack spacing={4} maxW="3xl">
         {stats.map((stat) => (
           <Box
             key={stat.label}
@@ -133,7 +164,7 @@ const StudentDashboard = () => {
             </Badge>
           </Box>
         ))}
-      </SimpleGrid>
+      </Stack>
 
       <Heading size="md" mt={8} mb={3}>
         Ближайшие занятия

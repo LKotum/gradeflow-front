@@ -155,7 +155,7 @@ const DeanSubjects = () => {
 
   return (
     <Box p={6}>
-      <Heading size="lg" mb={4}>
+      <Heading size="lg" mb={6}>
         Предметы и расписание
       </Heading>
       {error && (

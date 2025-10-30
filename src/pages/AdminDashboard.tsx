@@ -38,7 +38,7 @@ import {
   TabPanels,
   useColorModeValue,
   useDisclosure,
-  useToast
+  useToast,
 } from "@chakra-ui/react";
 import { DeleteIcon, EditIcon, RepeatIcon, SearchIcon } from "@chakra-ui/icons";
 import {
@@ -54,41 +54,71 @@ import {
   restoreAdminUser,
   restoreDeanStaff,
   deleteAdminUser,
-  resetAdminUserPassword
+  resetAdminUserPassword,
 } from "../api/client";
+import { formatFullName } from "../utils/name";
 
 interface DeanForm {
   password: string;
   firstName: string;
   lastName: string;
+  middleName?: string;
   email?: string;
   [key: string]: unknown;
 }
 
-type ConfirmType = "deleteDean" | "deleteUser" | "restoreDean" | "restoreUser" | "restoreGroup" | "restoreSubject";
+type ConfirmType =
+  | "deleteDean"
+  | "deleteUser"
+  | "restoreDean"
+  | "restoreUser"
+  | "restoreGroup"
+  | "restoreSubject";
 const PAGE_LIMIT = 20;
 
 const AdminDashboard = () => {
   const [deans, setDeans] = useState<any[]>([]);
-  const [form, setForm] = useState<DeanForm>({ password: "", firstName: "", lastName: "" });
+  const [form, setForm] = useState<DeanForm>({
+    password: "",
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    email: "",
+  });
   const [createLoading, setCreateLoading] = useState(false);
   const [deansLoading, setDeansLoading] = useState(false);
-  const [deansMeta, setDeansMeta] = useState({ limit: PAGE_LIMIT, offset: 0, total: 0 });
+  const [deansMeta, setDeansMeta] = useState({
+    limit: PAGE_LIMIT,
+    offset: 0,
+    total: 0,
+  });
   const [deansSearch, setDeansSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [tabIndex, setTabIndex] = useState(0);
   const toast = useToast();
 
-  const [activeRole, setActiveRole] = useState<"teacher" | "student" | "dean">("teacher");
+  const [activeRole, setActiveRole] = useState<"teacher" | "student" | "dean">(
+    "teacher"
+  );
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [activeUsersLoading, setActiveUsersLoading] = useState(false);
-  const [activeUsersMeta, setActiveUsersMeta] = useState({ limit: PAGE_LIMIT, offset: 0, total: 0 });
+  const [activeUsersMeta, setActiveUsersMeta] = useState({
+    limit: PAGE_LIMIT,
+    offset: 0,
+    total: 0,
+  });
   const [activeUsersSearch, setActiveUsersSearch] = useState("");
 
-  const [deletedRole, setDeletedRole] = useState<"teacher" | "student" | "dean">("teacher");
+  const [deletedRole, setDeletedRole] = useState<
+    "teacher" | "student" | "dean"
+  >("teacher");
   const [deletedUsers, setDeletedUsers] = useState<any[]>([]);
   const [deletedUsersLoading, setDeletedUsersLoading] = useState(false);
-  const [deletedUsersMeta, setDeletedUsersMeta] = useState({ limit: PAGE_LIMIT, offset: 0, total: 0 });
+  const [deletedUsersMeta, setDeletedUsersMeta] = useState({
+    limit: PAGE_LIMIT,
+    offset: 0,
+    total: 0,
+  });
   const [deletedUsersSearch, setDeletedUsersSearch] = useState("");
 
   const [deletedGroups, setDeletedGroups] = useState<any[]>([]);
@@ -97,18 +127,29 @@ const AdminDashboard = () => {
   const [deletedSubjects, setDeletedSubjects] = useState<any[]>([]);
   const [deletedSubjectsLoading, setDeletedSubjectsLoading] = useState(false);
 
-  const [confirmAction, setConfirmAction] = useState<{ type: ConfirmType; id: string; label: string } | null>(null);
-  const { isOpen: isConfirmOpen, onOpen: openConfirm, onClose: closeConfirm } = useDisclosure();
+  const [confirmAction, setConfirmAction] = useState<{
+    type: ConfirmType;
+    id: string;
+    label: string;
+  } | null>(null);
+  const {
+    isOpen: isConfirmOpen,
+    onOpen: openConfirm,
+    onClose: closeConfirm,
+  } = useDisclosure();
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const [confirmProcessing, setConfirmProcessing] = useState(false);
 
   const {
     isOpen: isPasswordOpen,
     onOpen: openPasswordDialog,
-    onClose: closePasswordDialog
+    onClose: closePasswordDialog,
   } = useDisclosure();
   const passwordCancelRef = useRef<HTMLButtonElement | null>(null);
-  const [passwordUser, setPasswordUser] = useState<{ id: string; label: string } | null>(null);
+  const [passwordUser, setPasswordUser] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
   const [passwordValue, setPasswordValue] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
 
@@ -122,11 +163,14 @@ const AdminDashboard = () => {
       const data = await fetchAdminDeans({
         limit: PAGE_LIMIT,
         offset,
-        search: query.trim() ? query.trim() : undefined
+        search: query.trim() ? query.trim() : undefined,
       });
       const list = data.data ?? [];
       if (offset > 0 && list.length === 0 && (data.meta?.total ?? 0) > 0) {
-        await loadDeans(Math.max(0, (data.meta?.total ?? 0) - PAGE_LIMIT), query);
+        await loadDeans(
+          Math.max(0, (data.meta?.total ?? 0) - PAGE_LIMIT),
+          query
+        );
         return;
       }
       setDeans(list);
@@ -140,17 +184,25 @@ const AdminDashboard = () => {
     }
   };
 
-  const loadActiveUsers = async (role: "teacher" | "student" | "dean", offset = 0, query = activeUsersSearch) => {
+  const loadActiveUsers = async (
+    role: "teacher" | "student" | "dean",
+    offset = 0,
+    query = activeUsersSearch
+  ) => {
     setActiveUsersLoading(true);
     try {
       const data = await fetchAdminUsers(role, {
         limit: PAGE_LIMIT,
         offset,
-        search: query.trim() ? query.trim() : undefined
+        search: query.trim() ? query.trim() : undefined,
       });
       const list = data.data ?? [];
       if (offset > 0 && list.length === 0 && (data.meta?.total ?? 0) > 0) {
-        await loadActiveUsers(role, Math.max(0, (data.meta?.total ?? 0) - PAGE_LIMIT), query);
+        await loadActiveUsers(
+          role,
+          Math.max(0, (data.meta?.total ?? 0) - PAGE_LIMIT),
+          query
+        );
         return;
       }
       setActiveUsers(list);
@@ -168,19 +220,42 @@ const AdminDashboard = () => {
     loadDeans();
   }, []);
 
-  const handleChange = (field: keyof DeanForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
-  };
+  const handleChange =
+    (field: keyof DeanForm) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setCreateLoading(true);
     setError(null);
     try {
-      await createDeanStaff(form);
+      const payload: Record<string, unknown> = {
+        password: form.password,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+      };
+      if (form.middleName && form.middleName.trim()) {
+        payload.middleName = form.middleName.trim();
+      }
+      if (form.email && form.email.trim()) {
+        payload.email = form.email.trim();
+      }
+      await createDeanStaff(payload);
       await loadDeans(0, deansSearch);
-      setForm({ password: "", firstName: "", lastName: "" });
-      toast({ title: "Сотрудник создан", status: "success", duration: 3000, isClosable: true });
+      setForm({
+        password: "",
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        email: "",
+      });
+      toast({
+        title: "Сотрудник создан",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (err) {
       setError("Не удалось создать сотрудника");
     } finally {
@@ -188,13 +263,20 @@ const AdminDashboard = () => {
     }
   };
 
-  const openConfirmDialog = (action: ConfirmType, id: string, label: string) => {
+  const openConfirmDialog = (
+    action: ConfirmType,
+    id: string,
+    label: string
+  ) => {
     setConfirmAction({ type: action, id, label });
     openConfirm();
   };
 
   const openPasswordChangeDialog = (user: any) => {
-    setPasswordUser({ id: user.id, label: `${user.firstName} ${user.lastName}` });
+    setPasswordUser({
+      id: user.id,
+      label: formatFullName(user.lastName, user.firstName, user.middleName),
+    });
     setPasswordValue("");
     openPasswordDialog();
   };
@@ -213,47 +295,102 @@ const AdminDashboard = () => {
         case "deleteDean":
           await deleteDeanStaff(confirmAction.id);
           await loadDeans(0, deansSearch);
-          toast({ title: "Сотрудник помечен как удалённый", status: "info", duration: 3000, isClosable: true });
+          toast({
+            title: "Сотрудник помечен как удалённый",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+          });
           break;
         case "deleteUser":
           await deleteAdminUser(confirmAction.id);
           await Promise.all([
-            loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch),
-            loadDeletedUsers(deletedRole, deletedUsersMeta.offset, deletedUsersSearch)
+            loadActiveUsers(
+              activeRole,
+              activeUsersMeta.offset,
+              activeUsersSearch
+            ),
+            loadDeletedUsers(
+              deletedRole,
+              deletedUsersMeta.offset,
+              deletedUsersSearch
+            ),
           ]);
-          toast({ title: "Пользователь удалён", status: "info", duration: 3000, isClosable: true });
+          toast({
+            title: "Пользователь удалён",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+          });
           break;
         case "restoreDean":
           await restoreDeanStaff(confirmAction.id);
           await Promise.all([
             loadDeans(0, deansSearch),
-            loadDeletedUsers(deletedRole, deletedUsersMeta.offset, deletedUsersSearch)
+            loadDeletedUsers(
+              deletedRole,
+              deletedUsersMeta.offset,
+              deletedUsersSearch
+            ),
           ]);
-          toast({ title: "Сотрудник восстановлен", status: "success", duration: 3000, isClosable: true });
+          toast({
+            title: "Сотрудник восстановлен",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
           break;
         case "restoreUser":
           await restoreAdminUser(confirmAction.id);
           await Promise.all([
-            loadDeletedUsers(deletedRole, deletedUsersMeta.offset, deletedUsersSearch),
-            loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch)
+            loadDeletedUsers(
+              deletedRole,
+              deletedUsersMeta.offset,
+              deletedUsersSearch
+            ),
+            loadActiveUsers(
+              activeRole,
+              activeUsersMeta.offset,
+              activeUsersSearch
+            ),
           ]);
-          toast({ title: "Пользователь восстановлен", status: "success", duration: 3000, isClosable: true });
+          toast({
+            title: "Пользователь восстановлен",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
           break;
         case "restoreGroup":
           await restoreAdminGroup(confirmAction.id);
           await loadDeletedGroups();
-          toast({ title: "Группа восстановлена", status: "success", duration: 3000, isClosable: true });
+          toast({
+            title: "Группа восстановлена",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
           break;
         case "restoreSubject":
           await restoreAdminSubject(confirmAction.id);
           await loadDeletedSubjects();
-          toast({ title: "Предмет восстановлен", status: "success", duration: 3000, isClosable: true });
+          toast({
+            title: "Предмет восстановлен",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
           break;
         default:
           break;
       }
     } catch (err) {
-      toast({ title: "Операция не выполнена", status: "error", duration: 3000, isClosable: true });
+      toast({
+        title: "Операция не выполнена",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
     } finally {
       setConfirmProcessing(false);
       closeConfirm();
@@ -268,29 +405,51 @@ const AdminDashboard = () => {
     setPasswordLoading(true);
     try {
       await resetAdminUserPassword(passwordUser.id, passwordValue.trim());
-      toast({ title: "Пароль обновлён", status: "success", duration: 3000, isClosable: true });
+      toast({
+        title: "Пароль обновлён",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
       setPasswordUser(null);
       setPasswordValue("");
       closePasswordDialog();
-      await loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch);
+      await loadActiveUsers(
+        activeRole,
+        activeUsersMeta.offset,
+        activeUsersSearch
+      );
     } catch (err) {
-      toast({ title: "Не удалось обновить пароль", status: "error", duration: 3000, isClosable: true });
+      toast({
+        title: "Не удалось обновить пароль",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
     } finally {
       setPasswordLoading(false);
     }
   };
 
-  const loadDeletedUsers = async (role: "teacher" | "student" | "dean", offset = 0, query = deletedUsersSearch) => {
+  const loadDeletedUsers = async (
+    role: "teacher" | "student" | "dean",
+    offset = 0,
+    query = deletedUsersSearch
+  ) => {
     setDeletedUsersLoading(true);
     try {
       const data = await fetchAdminDeletedUsers(role, {
         limit: PAGE_LIMIT,
         offset,
-        search: query.trim() ? query.trim() : undefined
+        search: query.trim() ? query.trim() : undefined,
       });
       const list = data.data ?? [];
       if (offset > 0 && list.length === 0 && (data.meta?.total ?? 0) > 0) {
-        await loadDeletedUsers(role, Math.max(0, (data.meta?.total ?? 0) - PAGE_LIMIT), query);
+        await loadDeletedUsers(
+          role,
+          Math.max(0, (data.meta?.total ?? 0) - PAGE_LIMIT),
+          query
+        );
         return;
       }
       setDeletedUsers(list);
@@ -340,7 +499,10 @@ const AdminDashboard = () => {
   };
 
   const handleDeansPageChange = async (direction: number) => {
-    const nextOffset = Math.max(0, deansMeta.offset + direction * deansMeta.limit);
+    const nextOffset = Math.max(
+      0,
+      deansMeta.offset + direction * deansMeta.limit
+    );
     if (direction > 0 && nextOffset >= deansMeta.total) {
       return;
     }
@@ -348,7 +510,10 @@ const AdminDashboard = () => {
   };
 
   const handleActiveUsersPageChange = async (direction: number) => {
-    const nextOffset = Math.max(0, activeUsersMeta.offset + direction * activeUsersMeta.limit);
+    const nextOffset = Math.max(
+      0,
+      activeUsersMeta.offset + direction * activeUsersMeta.limit
+    );
     if (direction > 0 && nextOffset >= activeUsersMeta.total) {
       return;
     }
@@ -356,7 +521,10 @@ const AdminDashboard = () => {
   };
 
   const handleDeletedUsersPageChange = async (direction: number) => {
-    const nextOffset = Math.max(0, deletedUsersMeta.offset + direction * deletedUsersMeta.limit);
+    const nextOffset = Math.max(
+      0,
+      deletedUsersMeta.offset + direction * deletedUsersMeta.limit
+    );
     if (direction > 0 && nextOffset >= deletedUsersMeta.total) {
       return;
     }
@@ -402,7 +570,9 @@ const AdminDashboard = () => {
       <Tbody>
         {deans.map((dean) => (
           <Tr key={dean.id} _hover={{ bg: tableHoverBg }}>
-            <Td>{`${dean.firstName} ${dean.lastName}`}</Td>
+            <Td>
+              {formatFullName(dean.lastName, dean.firstName, dean.middleName)}
+            </Td>
             <Td>{dean.ins ?? "—"}</Td>
             <Td>{dean.email ?? "—"}</Td>
             <Td textAlign="right">
@@ -413,7 +583,17 @@ const AdminDashboard = () => {
                   size="sm"
                   colorScheme="red"
                   variant="ghost"
-                  onClick={() => openConfirmDialog("deleteDean", dean.id, `${dean.firstName} ${dean.lastName}`)}
+                  onClick={() =>
+                    openConfirmDialog(
+                      "deleteDean",
+                      dean.id,
+                      formatFullName(
+                        dean.lastName,
+                        dean.firstName,
+                        dean.middleName
+                      )
+                    )
+                  }
                 />
               </Tooltip>
             </Td>
@@ -437,7 +617,9 @@ const AdminDashboard = () => {
       <Tbody>
         {activeUsers.map((user) => (
           <Tr key={user.id} _hover={{ bg: tableHoverBg }}>
-            <Td>{`${user.firstName} ${user.lastName}`}</Td>
+            <Td>
+              {formatFullName(user.lastName, user.firstName, user.middleName)}
+            </Td>
             <Td>{user.ins ?? "—"}</Td>
             <Td>{user.email ?? "—"}</Td>
             <Td>
@@ -462,7 +644,17 @@ const AdminDashboard = () => {
                     size="sm"
                     colorScheme="red"
                     variant="ghost"
-                    onClick={() => openConfirmDialog("deleteUser", user.id, `${user.firstName} ${user.lastName}`)}
+                    onClick={() =>
+                      openConfirmDialog(
+                        "deleteUser",
+                        user.id,
+                        formatFullName(
+                          user.lastName,
+                          user.firstName,
+                          user.middleName
+                        )
+                      )
+                    }
                   />
                 </Tooltip>
               </HStack>
@@ -487,7 +679,9 @@ const AdminDashboard = () => {
       <Tbody>
         {deletedUsers.map((user) => (
           <Tr key={user.id} _hover={{ bg: tableHoverBg }}>
-            <Td>{`${user.firstName} ${user.lastName}`}</Td>
+            <Td>
+              {formatFullName(user.lastName, user.firstName, user.middleName)}
+            </Td>
             <Td>{user.ins ?? "—"}</Td>
             <Td>{user.email ?? "—"}</Td>
             <Td>
@@ -500,7 +694,17 @@ const AdminDashboard = () => {
                 size="sm"
                 colorScheme="brand"
                 variant="ghost"
-                onClick={() => openConfirmDialog("restoreUser", user.id, `${user.firstName} ${user.lastName}`)}
+                onClick={() =>
+                  openConfirmDialog(
+                    "restoreUser",
+                    user.id,
+                    formatFullName(
+                      user.lastName,
+                      user.firstName,
+                      user.middleName
+                    )
+                  )
+                }
               />
             </Td>
           </Tr>
@@ -530,7 +734,9 @@ const AdminDashboard = () => {
                 size="sm"
                 colorScheme="brand"
                 variant="ghost"
-                onClick={() => openConfirmDialog("restoreGroup", group.id, group.name)}
+                onClick={() =>
+                  openConfirmDialog("restoreGroup", group.id, group.name)
+                }
               />
             </Td>
           </Tr>
@@ -560,7 +766,9 @@ const AdminDashboard = () => {
                 size="sm"
                 colorScheme="brand"
                 variant="ghost"
-                onClick={() => openConfirmDialog("restoreSubject", subject.id, subject.name)}
+                onClick={() =>
+                  openConfirmDialog("restoreSubject", subject.id, subject.name)
+                }
               />
             </Td>
           </Tr>
@@ -571,11 +779,12 @@ const AdminDashboard = () => {
 
   const confirmMessages: Record<ConfirmType, string> = {
     deleteDean: "Удалить сотрудника и пометить его аккаунт как неактивный?",
-    deleteUser: "Удалить выбранного пользователя и пометить его аккаунт как неактивный?",
+    deleteUser:
+      "Удалить выбранного пользователя и пометить его аккаунт как неактивный?",
     restoreDean: "Восстановить сотрудника деканата и вернуть доступ?",
     restoreUser: "Восстановить выбранного пользователя?",
     restoreGroup: "Восстановить выбранную группу?",
-    restoreSubject: "Восстановить выбранный предмет?"
+    restoreSubject: "Восстановить выбранный предмет?",
   };
 
   return (
@@ -583,7 +792,12 @@ const AdminDashboard = () => {
       <Heading size="lg" mb={6}>
         Панель администратора
       </Heading>
-      <Tabs index={tabIndex} onChange={setTabIndex} colorScheme="brand" variant="enclosed">
+      <Tabs
+        index={tabIndex}
+        onChange={setTabIndex}
+        colorScheme="brand"
+        variant="enclosed"
+      >
         <TabList>
           <Tab>Сотрудники деканата</Tab>
           <Tab>Пользователи</Tab>
@@ -593,8 +807,19 @@ const AdminDashboard = () => {
         </TabList>
         <TabPanels mt={4}>
           <TabPanel>
-            <Stack spacing={6} direction={{ base: "column", lg: "row" }} align="flex-start">
-              <Box flex={1} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow}>
+            <Stack
+              spacing={6}
+              direction={{ base: "column", lg: "row" }}
+              align="flex-start"
+            >
+              <Box
+                flex={1}
+                borderWidth="1px"
+                borderRadius="xl"
+                p={6}
+                bg={cardBg}
+                boxShadow={cardShadow}
+              >
                 <Heading size="md" mb={4}>
                   Создать сотрудника деканата
                 </Heading>
@@ -602,26 +827,49 @@ const AdminDashboard = () => {
                   <Stack spacing={3}>
                     <FormControl isRequired>
                       <FormLabel>Имя</FormLabel>
-                      <Input value={form.firstName} onChange={handleChange("firstName")} />
+                      <Input
+                        value={form.firstName}
+                        onChange={handleChange("firstName")}
+                      />
                     </FormControl>
                     <FormControl isRequired>
                       <FormLabel>Фамилия</FormLabel>
-                      <Input value={form.lastName} onChange={handleChange("lastName")} />
+                      <Input
+                        value={form.lastName}
+                        onChange={handleChange("lastName")}
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel>Отчество</FormLabel>
+                      <Input
+                        value={form.middleName ?? ""}
+                        onChange={handleChange("middleName")}
+                      />
                     </FormControl>
                     <FormControl>
                       <FormLabel>Электронная почта</FormLabel>
-                      <Input value={form.email ?? ""} onChange={handleChange("email")} />
+                      <Input
+                        value={form.email ?? ""}
+                        onChange={handleChange("email")}
+                      />
                     </FormControl>
                     <FormControl isRequired>
                       <FormLabel>Пароль</FormLabel>
-                      <Input type="password" value={form.password} onChange={handleChange("password")} />
+                      <Input
+                        type="password"
+                        value={form.password}
+                        onChange={handleChange("password")}
+                      />
                     </FormControl>
                     <Button
                       type="submit"
                       colorScheme="brand"
                       isLoading={createLoading}
                       transition="transform 0.2s ease, box-shadow 0.2s ease"
-                      _hover={{ transform: "translateY(-2px)", boxShadow: "md" }}
+                      _hover={{
+                        transform: "translateY(-2px)",
+                        boxShadow: "md",
+                      }}
                     >
                       Создать
                     </Button>
@@ -634,25 +882,51 @@ const AdminDashboard = () => {
                   </Stack>
                 </form>
               </Box>
-              <Box flex={2} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow} overflowX="auto">
-                <HStack justify="space-between" align="center" mb={4} flexWrap="wrap">
+              <Box
+                flex={2}
+                borderWidth="1px"
+                borderRadius="xl"
+                p={6}
+                bg={cardBg}
+                boxShadow={cardShadow}
+                overflowX="auto"
+              >
+                <HStack
+                  justify="space-between"
+                  align="center"
+                  mb={4}
+                  flexWrap="wrap"
+                >
                   <Heading size="md">Сотрудники деканата</Heading>
                   <Text fontSize="sm" color="gray.500">
                     Найдено: {deansMeta.total}
                   </Text>
                 </HStack>
-                <Box as="form" onSubmit={handleDeansSearchSubmit} mb={4} maxW={{ base: "100%", md: "360px" }}>
+                <Box
+                  as="form"
+                  onSubmit={handleDeansSearchSubmit}
+                  mb={4}
+                  maxW={{ base: "100%", md: "360px" }}
+                >
                   <FormControl>
                     <FormLabel>Поиск по ФИО или ИНС</FormLabel>
                     <InputGroup>
                       <InputLeftElement pointerEvents="none">
                         <SearchIcon color="gray.400" />
                       </InputLeftElement>
-                      <Input value={deansSearch} onChange={(event) => setDeansSearch(event.target.value)} placeholder="Например, Иванова" />
+                      <Input
+                        value={deansSearch}
+                        onChange={(event) => setDeansSearch(event.target.value)}
+                        placeholder="Например, Иванова"
+                      />
                     </InputGroup>
                   </FormControl>
                   <HStack spacing={3} mt={3}>
-                    <Button type="submit" colorScheme="brand" isLoading={deansLoading}>
+                    <Button
+                      type="submit"
+                      colorScheme="brand"
+                      isLoading={deansLoading}
+                    >
                       Найти
                     </Button>
                     <Button
@@ -681,13 +955,20 @@ const AdminDashboard = () => {
                     Показано {deans.length} из {deansMeta.total}
                   </Text>
                   <HStack spacing={3} mt={{ base: 3, md: 0 }}>
-                    <Button size="sm" onClick={() => void handleDeansPageChange(-1)} isDisabled={deansMeta.offset === 0 || deansLoading}>
+                    <Button
+                      size="sm"
+                      onClick={() => void handleDeansPageChange(-1)}
+                      isDisabled={deansMeta.offset === 0 || deansLoading}
+                    >
                       Предыдущая
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => void handleDeansPageChange(1)}
-                      isDisabled={deansMeta.offset + deansMeta.limit >= deansMeta.total || deansLoading}
+                      isDisabled={
+                        deansMeta.offset + deansMeta.limit >= deansMeta.total ||
+                        deansLoading
+                      }
                     >
                       Следующая
                     </Button>
@@ -697,12 +978,23 @@ const AdminDashboard = () => {
             </Stack>
           </TabPanel>
           <TabPanel>
-            <Stack spacing={4} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow}>
+            <Stack
+              spacing={4}
+              borderWidth="1px"
+              borderRadius="xl"
+              p={6}
+              bg={cardBg}
+              boxShadow={cardShadow}
+            >
               <HStack justify="space-between" align="center">
                 <Heading size="md">Пользователи</Heading>
                 <Select
                   value={activeRole}
-                  onChange={(event) => setActiveRole(event.target.value as "teacher" | "student" | "dean")}
+                  onChange={(event) =>
+                    setActiveRole(
+                      event.target.value as "teacher" | "student" | "dean"
+                    )
+                  }
                   maxW="xs"
                 >
                   <option value="teacher">Преподаватели</option>
@@ -710,18 +1002,32 @@ const AdminDashboard = () => {
                   <option value="dean">Сотрудники деканата</option>
                 </Select>
               </HStack>
-              <Box as="form" onSubmit={handleActiveUsersSearchSubmit} maxW={{ base: "100%", md: "360px" }}>
+              <Box
+                as="form"
+                onSubmit={handleActiveUsersSearchSubmit}
+                maxW={{ base: "100%", md: "360px" }}
+              >
                 <FormControl>
                   <FormLabel>Поиск по ФИО или ИНС</FormLabel>
                   <InputGroup>
                     <InputLeftElement pointerEvents="none">
                       <SearchIcon color="gray.400" />
                     </InputLeftElement>
-                    <Input value={activeUsersSearch} onChange={(event) => setActiveUsersSearch(event.target.value)} placeholder="Например, 00000045" />
+                    <Input
+                      value={activeUsersSearch}
+                      onChange={(event) =>
+                        setActiveUsersSearch(event.target.value)
+                      }
+                      placeholder="Например, 00000045"
+                    />
                   </InputGroup>
                 </FormControl>
                 <HStack spacing={3} mt={3}>
-                  <Button type="submit" colorScheme="brand" isLoading={activeUsersLoading}>
+                  <Button
+                    type="submit"
+                    colorScheme="brand"
+                    isLoading={activeUsersLoading}
+                  >
                     Найти
                   </Button>
                   <Button
@@ -730,7 +1036,9 @@ const AdminDashboard = () => {
                       setActiveUsersSearch("");
                       void loadActiveUsers(activeRole, 0, "");
                     }}
-                    isDisabled={activeUsersLoading && activeUsersSearch.trim() === ""}
+                    isDisabled={
+                      activeUsersLoading && activeUsersSearch.trim() === ""
+                    }
                   >
                     Сбросить
                   </Button>
@@ -741,7 +1049,9 @@ const AdminDashboard = () => {
                   <Spinner />
                 </Center>
               ) : activeUsers.length === 0 ? (
-                <Text color="gray.500">Нет пользователей по выбранной роли</Text>
+                <Text color="gray.500">
+                  Нет пользователей по выбранной роли
+                </Text>
               ) : (
                 activeUsersTable
               )}
@@ -750,13 +1060,22 @@ const AdminDashboard = () => {
                   Показано {activeUsers.length} из {activeUsersMeta.total}
                 </Text>
                 <HStack spacing={3} mt={{ base: 3, md: 0 }}>
-                  <Button size="sm" onClick={() => void handleActiveUsersPageChange(-1)} isDisabled={activeUsersMeta.offset === 0 || activeUsersLoading}>
+                  <Button
+                    size="sm"
+                    onClick={() => void handleActiveUsersPageChange(-1)}
+                    isDisabled={
+                      activeUsersMeta.offset === 0 || activeUsersLoading
+                    }
+                  >
                     Предыдущая
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => void handleActiveUsersPageChange(1)}
-                    isDisabled={activeUsersMeta.offset + activeUsersMeta.limit >= activeUsersMeta.total || activeUsersLoading}
+                    isDisabled={
+                      activeUsersMeta.offset + activeUsersMeta.limit >=
+                        activeUsersMeta.total || activeUsersLoading
+                    }
                   >
                     Следующая
                   </Button>
@@ -765,12 +1084,23 @@ const AdminDashboard = () => {
             </Stack>
           </TabPanel>
           <TabPanel>
-            <Stack spacing={4} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow}>
+            <Stack
+              spacing={4}
+              borderWidth="1px"
+              borderRadius="xl"
+              p={6}
+              bg={cardBg}
+              boxShadow={cardShadow}
+            >
               <HStack justify="space-between">
                 <Heading size="md">Удалённые пользователи</Heading>
                 <Select
                   value={deletedRole}
-                  onChange={(event) => setDeletedRole(event.target.value as "teacher" | "student" | "dean")}
+                  onChange={(event) =>
+                    setDeletedRole(
+                      event.target.value as "teacher" | "student" | "dean"
+                    )
+                  }
                   maxW="xs"
                 >
                   <option value="teacher">Преподаватели</option>
@@ -778,18 +1108,32 @@ const AdminDashboard = () => {
                   <option value="dean">Сотрудники деканата</option>
                 </Select>
               </HStack>
-              <Box as="form" onSubmit={handleDeletedUsersSearchSubmit} maxW={{ base: "100%", md: "360px" }}>
+              <Box
+                as="form"
+                onSubmit={handleDeletedUsersSearchSubmit}
+                maxW={{ base: "100%", md: "360px" }}
+              >
                 <FormControl>
                   <FormLabel>Поиск по ФИО или ИНС</FormLabel>
                   <InputGroup>
                     <InputLeftElement pointerEvents="none">
                       <SearchIcon color="gray.400" />
                     </InputLeftElement>
-                    <Input value={deletedUsersSearch} onChange={(event) => setDeletedUsersSearch(event.target.value)} placeholder="Например, 00000031" />
+                    <Input
+                      value={deletedUsersSearch}
+                      onChange={(event) =>
+                        setDeletedUsersSearch(event.target.value)
+                      }
+                      placeholder="Например, 00000031"
+                    />
                   </InputGroup>
                 </FormControl>
                 <HStack spacing={3} mt={3}>
-                  <Button type="submit" colorScheme="brand" isLoading={deletedUsersLoading}>
+                  <Button
+                    type="submit"
+                    colorScheme="brand"
+                    isLoading={deletedUsersLoading}
+                  >
                     Найти
                   </Button>
                   <Button
@@ -798,7 +1142,9 @@ const AdminDashboard = () => {
                       setDeletedUsersSearch("");
                       void loadDeletedUsers(deletedRole, 0, "");
                     }}
-                    isDisabled={deletedUsersLoading && deletedUsersSearch.trim() === ""}
+                    isDisabled={
+                      deletedUsersLoading && deletedUsersSearch.trim() === ""
+                    }
                   >
                     Сбросить
                   </Button>
@@ -818,13 +1164,22 @@ const AdminDashboard = () => {
                   Показано {deletedUsers.length} из {deletedUsersMeta.total}
                 </Text>
                 <HStack spacing={3} mt={{ base: 3, md: 0 }}>
-                  <Button size="sm" onClick={() => void handleDeletedUsersPageChange(-1)} isDisabled={deletedUsersMeta.offset === 0 || deletedUsersLoading}>
+                  <Button
+                    size="sm"
+                    onClick={() => void handleDeletedUsersPageChange(-1)}
+                    isDisabled={
+                      deletedUsersMeta.offset === 0 || deletedUsersLoading
+                    }
+                  >
                     Предыдущая
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => void handleDeletedUsersPageChange(1)}
-                    isDisabled={deletedUsersMeta.offset + deletedUsersMeta.limit >= deletedUsersMeta.total || deletedUsersLoading}
+                    isDisabled={
+                      deletedUsersMeta.offset + deletedUsersMeta.limit >=
+                        deletedUsersMeta.total || deletedUsersLoading
+                    }
                   >
                     Следующая
                   </Button>
@@ -833,7 +1188,14 @@ const AdminDashboard = () => {
             </Stack>
           </TabPanel>
           <TabPanel>
-            <Stack spacing={4} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow}>
+            <Stack
+              spacing={4}
+              borderWidth="1px"
+              borderRadius="xl"
+              p={6}
+              bg={cardBg}
+              boxShadow={cardShadow}
+            >
               <Heading size="md">Удалённые группы</Heading>
               {deletedGroupsLoading ? (
                 <Center py={8}>
@@ -847,7 +1209,14 @@ const AdminDashboard = () => {
             </Stack>
           </TabPanel>
           <TabPanel>
-            <Stack spacing={4} borderWidth="1px" borderRadius="xl" p={6} bg={cardBg} boxShadow={cardShadow}>
+            <Stack
+              spacing={4}
+              borderWidth="1px"
+              borderRadius="xl"
+              p={6}
+              bg={cardBg}
+              boxShadow={cardShadow}
+            >
               <Heading size="md">Удалённые предметы</Heading>
               {deletedSubjectsLoading ? (
                 <Center py={8}>
@@ -863,20 +1232,39 @@ const AdminDashboard = () => {
         </TabPanels>
       </Tabs>
 
-      <AlertDialog leastDestructiveRef={cancelRef} isOpen={isConfirmOpen} onClose={() => { if (!confirmProcessing) closeConfirm(); }}>
+      <AlertDialog
+        leastDestructiveRef={cancelRef}
+        isOpen={isConfirmOpen}
+        onClose={() => {
+          if (!confirmProcessing) closeConfirm();
+        }}
+      >
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
               Подтверждение
             </AlertDialogHeader>
             <AlertDialogBody>
-              {confirmAction ? `${confirmMessages[confirmAction.type]} (${confirmAction.label})` : ""}
+              {confirmAction
+                ? `${confirmMessages[confirmAction.type]} (${
+                    confirmAction.label
+                  })`
+                : ""}
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={closeConfirm} isDisabled={confirmProcessing}>
+              <Button
+                ref={cancelRef}
+                onClick={closeConfirm}
+                isDisabled={confirmProcessing}
+              >
                 Отмена
               </Button>
-              <Button colorScheme="brand" onClick={handleConfirmAction} isLoading={confirmProcessing} ml={3}>
+              <Button
+                colorScheme="brand"
+                onClick={handleConfirmAction}
+                isLoading={confirmProcessing}
+                ml={3}
+              >
                 Подтвердить
               </Button>
             </AlertDialogFooter>
@@ -884,7 +1272,11 @@ const AdminDashboard = () => {
         </AlertDialogOverlay>
       </AlertDialog>
 
-      <AlertDialog leastDestructiveRef={passwordCancelRef} isOpen={isPasswordOpen} onClose={handleClosePasswordDialog}>
+      <AlertDialog
+        leastDestructiveRef={passwordCancelRef}
+        isOpen={isPasswordOpen}
+        onClose={handleClosePasswordDialog}
+      >
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
@@ -908,10 +1300,20 @@ const AdminDashboard = () => {
               </Stack>
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={passwordCancelRef} onClick={handleClosePasswordDialog} isDisabled={passwordLoading}>
+              <Button
+                ref={passwordCancelRef}
+                onClick={handleClosePasswordDialog}
+                isDisabled={passwordLoading}
+              >
                 Отмена
               </Button>
-              <Button colorScheme="brand" onClick={handlePasswordReset} isLoading={passwordLoading} ml={3} isDisabled={!passwordValue.trim()}>
+              <Button
+                colorScheme="brand"
+                onClick={handlePasswordReset}
+                isLoading={passwordLoading}
+                ml={3}
+                isDisabled={!passwordValue.trim()}
+              >
                 Сохранить
               </Button>
             </AlertDialogFooter>
