@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AxiosError } from "axios";
 import {
   Avatar,
@@ -14,6 +14,8 @@ import {
 } from "@chakra-ui/react";
 import { fetchTeacherDashboard, fetchTeacherSchedule } from "../api/client";
 import { formatFullName } from "../utils/name";
+import { getAvatarAccentColor } from "../utils/avatarColor";
+import { useAvatarImage } from "../hooks/useAvatarImage";
 
 const TeacherDashboard = () => {
   const [data, setData] = useState<any | null>(null);
@@ -69,6 +71,16 @@ const TeacherDashboard = () => {
   }
 
   const subjects = Array.isArray(data.subjects) ? data.subjects : [];
+  const avatarSrc = useAvatarImage(data.profile.avatarUrl);
+  const avatarBg = useMemo(
+    () =>
+      getAvatarAccentColor(
+        data.profile.id,
+        data.profile.ins ?? data.profile.email ?? undefined
+      ),
+    [data.profile.email, data.profile.id, data.profile.ins]
+  );
+  const showAccent = !avatarSrc;
 
   return (
     <Box p={6}>
@@ -88,13 +100,14 @@ const TeacherDashboard = () => {
         <HStack align="flex-start" spacing={5} flexWrap="wrap">
           <Avatar
             size="lg"
-            bg="brand.500"
+            bg={showAccent ? avatarBg : undefined}
+            color={showAccent ? "white" : undefined}
             name={formatFullName(
               data.profile.lastName,
               data.profile.firstName,
               data.profile.middleName
             )}
-            src={data.profile.avatarUrl ?? undefined}
+            src={avatarSrc}
           />
           <Stack spacing={1.5}>
             <Heading size="md">

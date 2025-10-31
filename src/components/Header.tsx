@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Flex,
   Heading,
@@ -14,6 +15,8 @@ import {
 import { MoonIcon, SunIcon } from "@chakra-ui/icons";
 import { formatFullName } from "../utils/name";
 import type { UserSummary } from "../api/client";
+import { getAvatarAccentColor } from "../utils/avatarColor";
+import { useAvatarImage } from "../hooks/useAvatarImage";
 
 interface HeaderProps {
   onNavigate: (path: string) => void;
@@ -50,6 +53,16 @@ const Header = ({ onNavigate, onLogout, role, isAuthenticated, profile }: Header
   const avatarName = profile
     ? formatFullName(profile.lastName, profile.firstName, profile.middleName)
     : "Профиль";
+  const avatarSrc = useAvatarImage(profile?.avatarUrl);
+  const avatarBg = useMemo(
+    () =>
+      getAvatarAccentColor(
+        profile?.id,
+        profile?.ins ?? profile?.email ?? undefined
+      ),
+    [profile?.email, profile?.id, profile?.ins]
+  );
+  const hasAvatar = Boolean(avatarSrc);
   return (
     <Fade in>
       <Flex
@@ -93,9 +106,11 @@ const Header = ({ onNavigate, onLogout, role, isAuthenticated, profile }: Header
               <Avatar
                 size="sm"
                 name={avatarName}
-                src={profile?.avatarUrl ?? undefined}
+                src={avatarSrc}
+                bg={hasAvatar ? undefined : avatarBg}
+                color={hasAvatar ? undefined : "white"}
                 cursor="pointer"
-                border="2px solid rgba(255,255,255,0.7)"
+                border={hasAvatar ? undefined : "2px solid rgba(255,255,255,0.7)"}
                 onClick={() => onNavigate("/profile")}
               />
             </Tooltip>

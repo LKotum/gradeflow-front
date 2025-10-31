@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import {
   Accordion,
   AccordionButton,
@@ -37,6 +37,7 @@ const StudentSubjects = () => {
   const [averages, setAverages] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
+  const searchInputId = useId();
 
   const loadSubjects = async (offset = 0, currentSearch = "") => {
     setFetching(true);
@@ -53,6 +54,10 @@ const StudentSubjects = () => {
   useEffect(() => {
     loadSubjects();
   }, []);
+
+  const cardBg = useColorModeValue("white", "gray.800");
+  const tableHeaderBg = useColorModeValue("gray.100", "gray.700");
+  const panelBg = useColorModeValue("white", "gray.800");
 
   const handleSearch = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -71,14 +76,11 @@ const StudentSubjects = () => {
   };
 
   const badgeForAverage = (value?: number) => {
-    if (value == null) return { color: "gray", text: "—" };
+    if (value == null) return { color: "gray", text: "." };
     if (value >= 4.5) return { color: "green", text: value.toFixed(2) };
     if (value >= 3) return { color: "yellow", text: value.toFixed(2) };
     return { color: "red", text: value.toFixed(2) };
   };
-
-  const cardBg = useColorModeValue("white", "gray.800");
-  const tableHeaderBg = useColorModeValue("gray.100", "gray.700");
 
   return (
     <Box p={6}>
@@ -87,9 +89,14 @@ const StudentSubjects = () => {
       </Heading>
       <Box as="form" onSubmit={handleSearch} mb={6} maxW="lg">
         <FormControl>
-          <FormLabel>Поиск по названию или коду</FormLabel>
+          <FormLabel htmlFor={searchInputId}>Поиск по названию или коду</FormLabel>
           <HStack spacing={3}>
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Например, математика" />
+            <Input
+              id={searchInputId}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Например, математика"
+            />
             <Button type="submit" colorScheme="brand" isDisabled={fetching}>
               Найти
             </Button>
@@ -129,8 +136,11 @@ const StudentSubjects = () => {
                     <AccordionIcon />
                   </AccordionButton>
                 </h2>
-                <AccordionPanel pb={6} bg={useColorModeValue("white", "gray.800")}
-                  transition="transform 0.2s ease, box-shadow 0.2s ease">
+                <AccordionPanel
+                  pb={6}
+                  bg={panelBg}
+                  transition="transform 0.2s ease, box-shadow 0.2s ease"
+                >
                   <HStack spacing={3} mb={4} justify="space-between">
                     <Button
                       size="sm"
@@ -142,7 +152,7 @@ const StudentSubjects = () => {
                     </Button>
                     {aggregate && (
                       <Text fontSize="sm" color="gray.500">
-                        По предмету: {aggregate.subjectAverage?.toFixed(2) ?? "—"} · По группе: {aggregate.groupAverage?.toFixed(2) ?? "—"} · Общий: {aggregate.overallAverage?.toFixed(2) ?? "—"}
+                        По предмету: {aggregate.subjectAverage != null ? aggregate.subjectAverage.toFixed(2) : "."} · По группе: {aggregate.groupAverage != null ? aggregate.groupAverage.toFixed(2) : "."} · Общий: {aggregate.overallAverage != null ? aggregate.overallAverage.toFixed(2) : "."}
                       </Text>
                     )}
                   </HStack>
@@ -164,7 +174,7 @@ const StudentSubjects = () => {
                               <Td>{new Date(session.session.startsAt).toLocaleString()}</Td>
                               <Td textAlign="center">
                                 <Badge colorScheme={grade == null ? "gray" : tag.color} px={2} py={1} borderRadius="md">
-                                  {grade == null ? "—" : grade.toFixed(2)}
+                                  {grade == null ? "." : grade.toFixed(0)}
                                 </Badge>
                               </Td>
                               <Td>{session.notes ?? ""}</Td>

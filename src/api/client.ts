@@ -1,8 +1,82 @@
 import axios from "axios";
 
+const RAW_API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
+
+export const AUTH_STORAGE_KEY = "gradeflow.auth";
+
+let cachedAccessToken: string | null | undefined;
+
+const readAccessTokenFromStorage = (): string | null => {
+  if (typeof window === "undefined") {
+    cachedAccessToken = null;
+    return cachedAccessToken;
+  }
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) {
+      cachedAccessToken = null;
+      return cachedAccessToken;
+    }
+    const parsed = JSON.parse(raw) as { accessToken?: string };
+    cachedAccessToken = parsed?.accessToken ?? null;
+  } catch {
+    cachedAccessToken = null;
+  }
+  return cachedAccessToken;
+};
+
+export const getCachedAccessToken = (): string | null => {
+  if (cachedAccessToken !== undefined) {
+    return cachedAccessToken;
+  }
+  return readAccessTokenFromStorage();
+};
+
+const setCachedAccessToken = (token: string | null | undefined) => {
+  cachedAccessToken = token ?? null;
+};
+
+const apiBaseURL = (() => {
+  try {
+    return new URL(
+      RAW_API_BASE_URL,
+      typeof window !== "undefined" ? window.location.origin : undefined
+    ).toString();
+  } catch {
+    return RAW_API_BASE_URL;
+  }
+})();
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api",
+  baseURL: apiBaseURL,
 });
+
+const apiUrlObject = (() => {
+  try {
+    return new URL(
+      apiBaseURL,
+      typeof window !== "undefined" ? window.location.origin : undefined
+    );
+  } catch {
+    return new URL("http://localhost:8080/api");
+  }
+})();
+
+const apiOrigin = apiUrlObject.origin;
+
+export const resolveAssetUrl = (path?: string | null) => {
+  if (!path) {
+    return undefined;
+  }
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  if (path.startsWith("/")) {
+    return `${apiOrigin}${path}`;
+  }
+  return `${apiOrigin}/${path.replace(/^\/+/, "")}`;
+};
 
 export interface UserSummary {
   id: string;
@@ -13,6 +87,9 @@ export interface UserSummary {
   lastName: string;
   middleName?: string;
   avatarUrl?: string;
+  teacherTitle?: string;
+  teacherBio?: string;
+  staffPosition?: string;
 }
 
 export interface AuthResponse {
@@ -31,6 +108,7 @@ export interface PaginatedResponse<T> {
 }
 
 export const setAuthToken = (token: string | null) => {
+  setCachedAccessToken(token);
   if (token) {
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
   } else {
@@ -39,31 +117,38 @@ export const setAuthToken = (token: string | null) => {
 };
 
 api.interceptors.request.use((config) => {
-  try {
-    const raw = window.localStorage.getItem("gradeflow.auth"); // тот самый ключ
-    if (raw) {
-      const parsed = JSON.parse(raw) as { accessToken?: string };
-      if (parsed?.accessToken) {
-        config.headers = config.headers ?? {};
-        (config.headers as any).Authorization = `Bearer ${parsed.accessToken}`;
-      }
+  const token = getCachedAccessToken();
+  if (token) {
+    config.headers = config.headers ?? {};
+    const headers = config.headers as Record<string, string>;
+    if (!headers.Authorization) {
+      headers.Authorization = `Bearer ${token}`;
     }
-  } catch {}
+  }
   return config;
 });
 
-// (необязательно, но удобно) — если сервер вернул 401, можно реагировать
-// api.interceptors.response.use(
-//   (res) => res,
-//   (err) => {
-//     if (err?.response?.status === 401) {
-//       // например, можно очистить storage и отправить на экран логина
-//       // window.localStorage.removeItem("gradeflow.auth");
-//       // location.reload();
-//     }
-//     return Promise.reject(err);
-//   }
-// );
+let isRedirectingToLogin = false;
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err?.response?.status === 401 && !isRedirectingToLogin) {
+      isRedirectingToLogin = true;
+      try {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      } catch {}
+      setCachedAccessToken(null);
+      const loginUrl = "/login";
+      if (window.location.pathname !== loginUrl) {
+        window.location.href = loginUrl;
+      } else {
+        isRedirectingToLogin = false;
+      }
+    }
+    return Promise.reject(err);
+  }
+);
 
 export const loginByINS = async (ins: string, password: string) => {
   const { data } = await api.post<AuthResponse>("/auth/login/ins", {
@@ -92,12 +177,38 @@ export const deleteProfileAvatar = async () => {
   return data;
 };
 
+const createAvatarFormData = (file: File) => {
+  const formData = new FormData();
+  formData.append("avatar", file);
+  return formData;
+};
+
+export const uploadAdminUserAvatar = async (userId: string, file: File) => {
+  const formData = createAvatarFormData(file);
+  const { data } = await api.put<UserSummary>(
+    `/admin/users/${userId}/avatar`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+};
+
+export const deleteAdminUserAvatar = async (userId: string) => {
+  const { data } = await api.delete<UserSummary>(
+    `/admin/users/${userId}/avatar`
+  );
+  return data;
+};
+
 export const changePassword = async (payload: {
   currentPassword: string;
   newPassword: string;
 }) => {
   await api.patch("/auth/password", payload);
 };
+
+export const resolveAvatarUrl = (path?: string | null) =>
+  resolveAssetUrl(path);
 
 export const fetchTeacherDashboard = async () => {
   const { data } = await api.get("/teacher/dashboard");
@@ -211,6 +322,10 @@ export const createDeanGroup = async (payload: {
   return data;
 };
 
+export const deleteDeanGroup = async (groupId: string) => {
+  await api.delete(`/dean/groups/${groupId}`);
+};
+
 export const createDeanSubject = async (payload: {
   code: string;
   name: string;
@@ -220,13 +335,33 @@ export const createDeanSubject = async (payload: {
   return data;
 };
 
+export const deleteDeanSubject = async (subjectId: string) => {
+  await api.delete(`/dean/subjects/${subjectId}`);
+};
+
 export const createDeanTeacher = async (payload: Record<string, unknown>) => {
   const { data } = await api.post("/dean/teachers", payload);
   return data;
 };
 
+export const updateDeanTeacher = async (
+  teacherId: string,
+  payload: Record<string, unknown>
+) => {
+  const { data } = await api.patch(`/dean/teachers/${teacherId}`, payload);
+  return data;
+};
+
 export const createDeanStudent = async (payload: Record<string, unknown>) => {
   const { data } = await api.post("/dean/students", payload);
+  return data;
+};
+
+export const updateDeanStudent = async (
+  studentId: string,
+  payload: Record<string, unknown>
+) => {
+  const { data } = await api.patch(`/dean/students/${studentId}`, payload);
   return data;
 };
 
@@ -257,6 +392,65 @@ export const assignStudentToGroup = async (
   payload: { studentIds: string[] }
 ) => {
   await api.post(`/dean/groups/${groupId}/students`, payload);
+};
+
+export const uploadDeanStudentAvatar = async (
+  studentId: string,
+  file: File
+) => {
+  const formData = createAvatarFormData(file);
+  const { data } = await api.put<UserSummary>(
+    `/dean/students/${studentId}/avatar`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+};
+
+export const deleteDeanStudentAvatar = async (studentId: string) => {
+  const { data } = await api.delete<UserSummary>(
+    `/dean/students/${studentId}/avatar`
+  );
+  return data;
+};
+
+export const uploadDeanTeacherAvatar = async (
+  teacherId: string,
+  file: File
+) => {
+  const formData = createAvatarFormData(file);
+  const { data } = await api.put<UserSummary>(
+    `/dean/teachers/${teacherId}/avatar`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+};
+
+export const deleteDeanTeacherAvatar = async (teacherId: string) => {
+  const { data } = await api.delete<UserSummary>(
+    `/dean/teachers/${teacherId}/avatar`
+  );
+  return data;
+};
+
+export const fetchDeanStudentSubjects = async (
+  studentId: string,
+  params?: { limit?: number; offset?: number; search?: string }
+) => {
+  const { data } = await api.get<PaginatedResponse<any>>(
+    `/dean/students/${studentId}/subjects`,
+    { params }
+  );
+  return data;
+};
+
+export const updateDeanGrade = async (
+  gradeId: string,
+  payload: { value: number; notes?: string }
+) => {
+  const { data } = await api.patch(`/dean/grades/${gradeId}`, payload);
+  return data;
 };
 
 export const scheduleSession = async (payload: {
@@ -332,6 +526,14 @@ export const resetAdminUserPassword = async (
   password: string
 ) => {
   await api.patch(`/admin/users/${userId}/password`, { password });
+};
+
+export const updateAdminUser = async (
+  userId: string,
+  payload: Record<string, unknown>
+) => {
+  const { data } = await api.patch(`/admin/users/${userId}`, payload);
+  return data;
 };
 
 export const deleteAdminUser = async (userId: string) => {

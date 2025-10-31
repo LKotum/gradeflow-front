@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AxiosError } from "axios";
 import {
   Avatar,
@@ -14,6 +14,8 @@ import {
 } from "@chakra-ui/react";
 import { fetchStudentDashboard, fetchStudentSchedule } from "../api/client";
 import { formatFullName } from "../utils/name";
+import { getAvatarAccentColor } from "../utils/avatarColor";
+import { useAvatarImage } from "../hooks/useAvatarImage";
 
 const StudentDashboard = () => {
   const [data, setData] = useState<any | null>(null);
@@ -75,7 +77,7 @@ const StudentDashboard = () => {
   const stats = [
     {
       label: "Средний балл",
-      value: data.averageGpa ? data.averageGpa.toFixed(2) : "—",
+      value: data.averageGpa ? data.averageGpa.toFixed(2) : ".",
       colorScheme: "brand",
     },
     {
@@ -85,6 +87,17 @@ const StudentDashboard = () => {
     },
     { label: "ИНС", value: data.profile.ins ?? "—", colorScheme: "teal" },
   ];
+
+  const avatarSrc = useAvatarImage(data.profile.avatarUrl);
+  const avatarBg = useMemo(
+    () =>
+      getAvatarAccentColor(
+        data.profile.id,
+        data.profile.ins ?? data.profile.email ?? undefined
+      ),
+    [data.profile.email, data.profile.id, data.profile.ins]
+  );
+  const showAccent = !avatarSrc;
 
   return (
     <Box p={6}>
@@ -106,13 +119,14 @@ const StudentDashboard = () => {
         <HStack align="flex-start" spacing={5} flexWrap="wrap">
           <Avatar
             size="lg"
-            bg="brand.500"
+            bg={showAccent ? avatarBg : undefined}
+            color={showAccent ? "white" : undefined}
             name={formatFullName(
               data.profile.lastName,
               data.profile.firstName,
               data.profile.middleName
             )}
-            src={data.profile.avatarUrl ?? undefined}
+            src={avatarSrc}
           />
           <Stack spacing={2}>
             <Text fontWeight="semibold">

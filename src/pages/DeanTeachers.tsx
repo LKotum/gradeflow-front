@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useState, useId } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from "react";
 import {
   Alert,
   AlertIcon,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Box,
   Button,
   Checkbox,
@@ -26,6 +32,16 @@ import {
   Tr,
   useColorModeValue,
   useToast,
+  UnorderedList,
+  ListItem,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
 } from "@chakra-ui/react";
 import { SearchIcon } from "@chakra-ui/icons";
 import type { AxiosError } from "axios";
@@ -38,8 +54,25 @@ import {
   fetchSubjectTeachers,
   fetchDeanTeachers,
   scheduleSession,
+  updateDeanTeacher,
+  uploadDeanTeacherAvatar,
+  deleteDeanTeacherAvatar,
 } from "../api/client";
 import { formatFullName } from "../utils/name";
+import AvatarEditor from "../components/AvatarEditor";
+import { invalidateAvatarCache } from "../hooks/useAvatarImage";
+
+const extractApiError = (error: unknown, fallback: string) => {
+  const axiosError = error as {
+    response?: { data?: { message?: string; error?: string; detail?: string } };
+  };
+  return (
+    axiosError?.response?.data?.message ??
+    axiosError?.response?.data?.error ??
+    axiosError?.response?.data?.detail ??
+    fallback
+  );
+};
 
 const PAGE_LIMIT = 20;
 
@@ -71,10 +104,6 @@ const DeanTeachers = () => {
     slot: 1,
     topic: "",
   });
-  const [detachForm, setDetachForm] = useState({
-    subjectId: "",
-    teacherId: "",
-  });
   const [assignedTeachersBySubject, setAssignedTeachersBySubject] = useState<
     Record<string, any[]>
   >({});
@@ -84,18 +113,55 @@ const DeanTeachers = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [teachersLoading, setTeachersLoading] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Record<string, any> | null>(null);
+  const [editTeacherForm, setEditTeacherForm] = useState({
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    email: "",
+    title: "",
+    bio: "",
+  });
+  const [editTeacherLoading, setEditTeacherLoading] = useState(false);
+  const [teacherSubjectsMap, setTeacherSubjectsMap] = useState<
+    Record<string, Array<{ id: string; name: string }>>
+  >({});
+  const [pendingDetachAssignment, setPendingDetachAssignment] = useState<
+    { subjectId: string; subjectName: string; teacherId: string; teacherName: string } | null
+  >(null);
+  const detachConfirmDialog = useDisclosure();
+  const detachCancelRef = useRef<HTMLButtonElement | null>(null);
+  const [detachProcessing, setDetachProcessing] = useState(false);
 
   const cardBg = useColorModeValue("white", "gray.800");
   const tableBg = useColorModeValue("gray.100", "gray.700");
+  const addTeacherPrefix = useId();
+  const assignTeacherPrefix = useId();
+  const sessionPrefix = useId();
   const sessionGroupsFieldId = useId();
-  const sessionGroupsLabelId = `${sessionGroupsFieldId}-label`;
+  const teacherSearchFieldId = useId();
+  const teacherFormFieldIds = {
+    firstName: `${addTeacherPrefix}-first-name`,
+    lastName: `${addTeacherPrefix}-last-name`,
+    middleName: `${addTeacherPrefix}-middle-name`,
+    email: `${addTeacherPrefix}-email`,
+    password: `${addTeacherPrefix}-password`,
+  };
+  const assignmentFieldIds = {
+    subject: `${assignTeacherPrefix}-subject`,
+    teacher: `${assignTeacherPrefix}-teacher`,
+  };
+  const sessionFieldIds = {
+    subject: `${sessionPrefix}-subject`,
+    teacher: `${sessionPrefix}-teacher`,
+    date: `${sessionPrefix}-date`,
+    slot: `${sessionPrefix}-slot`,
+    topic: `${sessionPrefix}-topic`,
+  };
   const toast = useToast();
-  const detachTeachers =
-    assignedTeachersBySubject[detachForm.subjectId] ?? [];
+  const editTeacherDialog = useDisclosure();
   const sessionAssignedTeachers =
     assignedTeachersBySubject[sessionForm.subjectId] ?? [];
-  const detachTeachersLoading =
-    !!detachForm.subjectId && loadingSubjectId === detachForm.subjectId;
   const sessionTeachersLoading =
     !!sessionForm.subjectId && loadingSubjectId === sessionForm.subjectId;
 
@@ -126,6 +192,42 @@ const DeanTeachers = () => {
       }
     },
     [assignmentForm.teacherId, teacherSearch]
+  );
+
+  const buildTeacherAssignments = useCallback(
+    async (subjectsList: any[]) => {
+      const map: Record<string, Array<{ id: string; name: string }>> = {};
+      await Promise.all(
+        subjectsList.map(async (item: any) => {
+          const subjectId = item.id ?? item.subject?.id;
+          if (!subjectId) {
+            return;
+          }
+          try {
+            const assigned = await fetchSubjectTeachers(subjectId);
+            const subjectName = item.name ?? item.subject?.name ?? "";
+            (assigned ?? []).forEach((teacher: any) => {
+              if (!teacher?.id) {
+                return;
+              }
+              const current = map[teacher.id] ?? [];
+              if (!current.some((entry) => entry.id === subjectId)) {
+                map[teacher.id] = [
+                  ...current,
+                  { id: subjectId, name: subjectName },
+                ];
+              } else {
+                map[teacher.id] = current;
+              }
+            });
+          } catch (err) {
+            console.error("failed to load teacher assignments", err);
+          }
+        })
+      );
+      setTeacherSubjectsMap(map);
+    },
+    []
   );
 
   const loadAssignedTeachers = useCallback(async (subjectId: string) => {
@@ -163,6 +265,7 @@ const DeanTeachers = () => {
       ]);
       setSubjects(subjectsData.data ?? []);
       setGroups(groupsData.data ?? []);
+      await buildTeacherAssignments(subjectsData.data ?? []);
       await loadTeachers(0, "");
     } catch (catalogError) {
       console.error(catalogError);
@@ -170,7 +273,7 @@ const DeanTeachers = () => {
     } finally {
       setInitialLoading(false);
     }
-  }, [loadTeachers]);
+  }, [loadTeachers, buildTeacherAssignments]);
 
   useEffect(() => {
     loadCatalogs();
@@ -205,6 +308,81 @@ const DeanTeachers = () => {
     }
   };
 
+  const openEditTeacherDialog = (teacher: any) => {
+    setEditingTeacher(teacher);
+    setEditTeacherForm({
+      firstName: teacher.firstName ?? "",
+      lastName: teacher.lastName ?? "",
+      middleName: teacher.middleName ?? "",
+      email: teacher.email ?? "",
+      title: teacher.teacherTitle ?? "",
+      bio: teacher.teacherBio ?? "",
+    });
+    editTeacherDialog.onOpen();
+  };
+
+  const handleEditTeacherSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editingTeacher) {
+      return;
+    }
+    setEditTeacherLoading(true);
+    try {
+      const payload: Record<string, unknown> = {};
+      const trim = (value: string) => value.trim();
+      const originalFirst = editingTeacher.firstName ?? "";
+      const originalLast = editingTeacher.lastName ?? "";
+      const originalMiddle = editingTeacher.middleName ?? "";
+      const originalEmail = editingTeacher.email ?? "";
+      const originalTitle = editingTeacher.teacher?.title ?? "";
+      const originalBio = editingTeacher.teacher?.bio ?? "";
+
+      if (trim(editTeacherForm.firstName) !== originalFirst) {
+        payload.firstName = trim(editTeacherForm.firstName);
+      }
+      if (trim(editTeacherForm.lastName) !== originalLast) {
+        payload.lastName = trim(editTeacherForm.lastName);
+      }
+      if (trim(editTeacherForm.middleName) !== originalMiddle) {
+        const next = trim(editTeacherForm.middleName);
+        payload.middleName = next ? next : null;
+      }
+      if (trim(editTeacherForm.email) !== originalEmail) {
+        const next = trim(editTeacherForm.email);
+        payload.email = next ? next : null;
+      }
+      if (trim(editTeacherForm.title) !== originalTitle) {
+        const next = trim(editTeacherForm.title);
+        payload.title = next ? next : null;
+      }
+      if (trim(editTeacherForm.bio) !== originalBio) {
+        const next = trim(editTeacherForm.bio);
+        payload.bio = next ? next : null;
+      }
+      if (Object.keys(payload).length === 0) {
+        toast({
+          title: "Изменения не внесены",
+          status: "info",
+          duration: 2500,
+          isClosable: true,
+        });
+        return;
+      }
+      await updateDeanTeacher(editingTeacher.id, payload);
+      await loadTeachers(teachersMeta.offset, teacherSearch);
+      editTeacherDialog.onClose();
+    } catch (err) {
+      toast({
+        title: "Не удалось обновить данные преподавателя",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setEditTeacherLoading(false);
+    }
+  };
+
   const handleAssignmentSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const { subjectId, teacherId } = assignmentForm;
@@ -226,6 +404,7 @@ const DeanTeachers = () => {
       if (subjectId) {
         await loadAssignedTeachers(subjectId);
       }
+      await buildTeacherAssignments(subjects);
       setAssignmentForm((prev) => ({ ...prev, teacherId: "" }));
       toast({
         title: "Преподаватель назначен",
@@ -288,24 +467,90 @@ const DeanTeachers = () => {
     }
   };
 
-  const handleDetachSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const { subjectId, teacherId } = detachForm;
+  const handleDetachTeacher = async (subjectId: string, teacherId: string) => {
     if (!subjectId || !teacherId) {
       return;
     }
-    setFormLoading(true);
+    setDetachProcessing(true);
     setError(null);
     try {
       await detachTeacherFromSubject(subjectId, teacherId);
       await loadAssignedTeachers(subjectId);
-      setDetachForm({ subjectId, teacherId: "" });
+      await buildTeacherAssignments(subjects);
+      toast({
+        title: "Преподаватель откреплён",
+        status: "info",
+      });
     } catch (err) {
+      console.error(err);
       setError("Не удалось открепить преподавателя от предмета");
     } finally {
-      setFormLoading(false);
+      setDetachProcessing(false);
     }
   };
+
+  const handleTeacherAvatarUpload = useCallback(
+    async (file: File) => {
+      if (!editingTeacher) {
+        throw new Error("Преподаватель не выбран");
+      }
+      try {
+        const previousPath = editingTeacher.avatarUrl;
+        const updated = await uploadDeanTeacherAvatar(editingTeacher.id, file);
+        invalidateAvatarCache(previousPath);
+        invalidateAvatarCache(updated.avatarUrl);
+        setEditingTeacher((prev) =>
+          prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
+        );
+        await Promise.all([
+          loadTeachers(teachersMeta.offset, teacherSearch),
+          buildTeacherAssignments(subjects),
+        ]);
+      } catch (error) {
+        throw new Error(
+          extractApiError(error, "Не удалось обновить аватар преподавателя")
+        );
+      }
+    },
+    [
+      editingTeacher,
+      loadTeachers,
+      teachersMeta.offset,
+      teacherSearch,
+      buildTeacherAssignments,
+      subjects,
+    ]
+  );
+
+  const handleTeacherAvatarDelete = useCallback(async () => {
+    if (!editingTeacher) {
+      throw new Error("Преподаватель не выбран");
+    }
+    try {
+      const previousPath = editingTeacher.avatarUrl;
+      const updated = await deleteDeanTeacherAvatar(editingTeacher.id);
+      invalidateAvatarCache(previousPath);
+      invalidateAvatarCache(updated.avatarUrl);
+      setEditingTeacher((prev) =>
+        prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
+      );
+      await Promise.all([
+        loadTeachers(teachersMeta.offset, teacherSearch),
+        buildTeacherAssignments(subjects),
+      ]);
+    } catch (error) {
+      throw new Error(
+        extractApiError(error, "Не удалось удалить аватар преподавателя")
+      );
+    }
+  }, [
+    editingTeacher,
+    loadTeachers,
+    teachersMeta.offset,
+    teacherSearch,
+    buildTeacherAssignments,
+    subjects,
+  ]);
 
   const handleTeacherSearch = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -356,12 +601,7 @@ const DeanTeachers = () => {
         </Alert>
       )}
 
-      <SimpleGrid
-        columns={{ base: 1, lg: 2, xl: 3 }}
-        spacing={6}
-        alignItems="flex-start"
-        mb={6}
-      >
+      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} alignItems="flex-start" mb={6}>
         <Stack
           borderWidth="1px"
           borderRadius="xl"
@@ -375,37 +615,40 @@ const DeanTeachers = () => {
           _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
         >
           <Heading size="md">Добавить преподавателя</Heading>
-          <FormControl isRequired>
-            <FormLabel>Имя</FormLabel>
+          <FormControl id={teacherFormFieldIds.firstName} isRequired>
+            <FormLabel htmlFor={teacherFormFieldIds.firstName}>Имя</FormLabel>
             <Input
+              id={teacherFormFieldIds.firstName}
               value={teacherForm.firstName}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, firstName: e.target.value })
               }
             />
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Фамилия</FormLabel>
+          <FormControl id={teacherFormFieldIds.lastName} isRequired>
+            <FormLabel htmlFor={teacherFormFieldIds.lastName}>Фамилия</FormLabel>
             <Input
+              id={teacherFormFieldIds.lastName}
               value={teacherForm.lastName}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, lastName: e.target.value })
               }
             />
           </FormControl>
-          <FormControl>
-            <FormLabel>Отчество</FormLabel>
+          <FormControl id={teacherFormFieldIds.middleName}>
+            <FormLabel htmlFor={teacherFormFieldIds.middleName}>Отчество</FormLabel>
             <Input
+              id={teacherFormFieldIds.middleName}
               value={teacherForm.middleName}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, middleName: e.target.value })
               }
-              placeholder="Необязательно"
             />
           </FormControl>
-          <FormControl>
-            <FormLabel>Электронная почта</FormLabel>
+          <FormControl id={teacherFormFieldIds.email}>
+            <FormLabel htmlFor={teacherFormFieldIds.email}>Электронная почта</FormLabel>
             <Input
+              id={teacherFormFieldIds.email}
               value={teacherForm.email}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, email: e.target.value })
@@ -413,9 +656,10 @@ const DeanTeachers = () => {
               placeholder="teacher@example.com"
             />
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Пароль</FormLabel>
+          <FormControl id={teacherFormFieldIds.password} isRequired>
+            <FormLabel htmlFor={teacherFormFieldIds.password}>Пароль</FormLabel>
             <Input
+              id={teacherFormFieldIds.password}
               type="password"
               value={teacherForm.password}
               onChange={(e) =>
@@ -441,9 +685,10 @@ const DeanTeachers = () => {
           _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
         >
           <Heading size="md">Назначить преподавателя на предмет</Heading>
-          <FormControl isRequired>
-            <FormLabel>Предмет</FormLabel>
+          <FormControl id={assignmentFieldIds.subject} isRequired>
+            <FormLabel htmlFor={assignmentFieldIds.subject}>Предмет</FormLabel>
             <Select
+              id={assignmentFieldIds.subject}
               placeholder="Выберите предмет"
               value={assignmentForm.subjectId}
               onChange={(e) =>
@@ -460,9 +705,10 @@ const DeanTeachers = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Преподаватель</FormLabel>
+          <FormControl id={assignmentFieldIds.teacher} isRequired>
+            <FormLabel htmlFor={assignmentFieldIds.teacher}>Преподаватель</FormLabel>
             <Select
+              id={assignmentFieldIds.teacher}
               placeholder="Выберите преподавателя"
               value={assignmentForm.teacherId}
               onChange={(e) =>
@@ -493,99 +739,6 @@ const DeanTeachers = () => {
           </Button>
         </Stack>
 
-        <Stack
-          borderWidth="1px"
-          borderRadius="xl"
-          p={6}
-          spacing={3}
-          bg={cardBg}
-          boxShadow="md"
-          as="form"
-          onSubmit={handleDetachSubmit}
-          transition="transform 0.2s ease, box-shadow 0.2s ease"
-          _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
-        >
-          <Heading size="md">Открепить преподавателя</Heading>
-          <FormControl isRequired>
-            <FormLabel>Предмет</FormLabel>
-            <Select
-              placeholder="Выберите предмет"
-              value={detachForm.subjectId}
-              onChange={(e) => {
-                const value = e.target.value;
-                setDetachForm({ subjectId: value, teacherId: "" });
-                if (value && !assignedTeachersBySubject[value]) {
-                  void loadAssignedTeachers(value);
-                }
-              }}
-            >
-              {subjectOptions.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.label}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Преподаватель</FormLabel>
-            <Select
-              placeholder={
-                !detachForm.subjectId
-                  ? "Сначала выберите предмет"
-                  : detachTeachersLoading
-                  ? "Загрузка..."
-                  : detachTeachers.length === 0
-                  ? "Назначенных преподавателей нет"
-                  : "Выберите преподавателя"
-              }
-              value={detachForm.teacherId}
-              onChange={(e) =>
-                setDetachForm((prev) => ({
-                  ...prev,
-                  teacherId: e.target.value,
-                }))
-              }
-              isDisabled={
-                !detachForm.subjectId ||
-                detachTeachersLoading ||
-                detachTeachers.length === 0
-              }
-            >
-              {detachTeachers.map((teacher: any) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {formatFullName(
-                    teacher.lastName,
-                    teacher.firstName,
-                    teacher.middleName
-                  )}
-                </option>
-              ))}
-            </Select>
-            {detachForm.subjectId && detachTeachersLoading && (
-              <HStack spacing={2} mt={2}>
-                <Spinner size="sm" />
-                <Text fontSize="sm" color="gray.500">
-                  Загрузка списка назначенных преподавателей...
-                </Text>
-              </HStack>
-            )}
-            {detachForm.subjectId &&
-              !detachTeachersLoading &&
-              detachTeachers.length === 0 && (
-                <Text fontSize="sm" color="gray.500" mt={2}>
-                  Для выбранного предмета нет назначенных преподавателей.
-                </Text>
-              )}
-          </FormControl>
-          <Button
-            type="submit"
-            colorScheme="red"
-            variant="outline"
-            isLoading={formLoading}
-          >
-            Открепить
-          </Button>
-        </Stack>
       </SimpleGrid>
 
       <Stack
@@ -603,9 +756,10 @@ const DeanTeachers = () => {
       >
         <Heading size="md">Планирование занятия</Heading>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-          <FormControl isRequired>
-            <FormLabel>Предмет</FormLabel>
+          <FormControl id={sessionFieldIds.subject} isRequired>
+            <FormLabel htmlFor={sessionFieldIds.subject}>Предмет</FormLabel>
             <Select
+              id={sessionFieldIds.subject}
               placeholder="Выберите предмет"
               value={sessionForm.subjectId}
               onChange={(e) => {
@@ -628,9 +782,10 @@ const DeanTeachers = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Преподаватель</FormLabel>
+          <FormControl id={sessionFieldIds.teacher} isRequired>
+            <FormLabel htmlFor={sessionFieldIds.teacher}>Преподаватель</FormLabel>
             <Select
+              id={sessionFieldIds.teacher}
               placeholder={
                 !sessionForm.subjectId
                   ? "Сначала выберите предмет"
@@ -676,9 +831,10 @@ const DeanTeachers = () => {
                 </Text>
               )}
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Дата</FormLabel>
+          <FormControl id={sessionFieldIds.date} isRequired>
+            <FormLabel htmlFor={sessionFieldIds.date}>Дата</FormLabel>
             <Input
+              id={sessionFieldIds.date}
               type="date"
               value={sessionForm.date}
               onChange={(e) =>
@@ -686,9 +842,10 @@ const DeanTeachers = () => {
               }
             />
           </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Пара</FormLabel>
+          <FormControl id={sessionFieldIds.slot} isRequired>
+            <FormLabel htmlFor={sessionFieldIds.slot}>Пара</FormLabel>
             <Select
+              id={sessionFieldIds.slot}
               value={sessionForm.slot}
               onChange={(e) =>
                 setSessionForm({ ...sessionForm, slot: Number(e.target.value) })
@@ -702,9 +859,10 @@ const DeanTeachers = () => {
             </Select>
           </FormControl>
         </SimpleGrid>
-        <FormControl>
-          <FormLabel>Тема занятия</FormLabel>
+        <FormControl id={sessionFieldIds.topic}>
+          <FormLabel htmlFor={sessionFieldIds.topic}>Тема занятия</FormLabel>
           <Input
+            id={sessionFieldIds.topic}
             value={sessionForm.topic}
             onChange={(e) =>
               setSessionForm({ ...sessionForm, topic: e.target.value })
@@ -712,12 +870,11 @@ const DeanTeachers = () => {
             placeholder="Например, Лабораторная работа №1"
           />
         </FormControl>
-        <FormControl>
-          <FormLabel id={sessionGroupsLabelId}>
+        <FormControl as="fieldset" isRequired>
+          <FormLabel as="legend">
             Группы <Text as="span" color="red.500">*</Text>
           </FormLabel>
           <CheckboxGroup
-            aria-labelledby={sessionGroupsLabelId}
             value={sessionForm.groupIds}
             onChange={(values) =>
               setSessionForm({ ...sessionForm, groupIds: values as string[] })
@@ -755,13 +912,16 @@ const DeanTeachers = () => {
           Поиск преподавателей
         </Heading>
         <HStack align="flex-end" spacing={4} flexWrap="wrap">
-          <FormControl maxW={{ base: "100%", md: "320px" }}>
-            <FormLabel>Фамилия, имя или ИНС</FormLabel>
+          <FormControl id={teacherSearchFieldId} maxW={{ base: "100%", md: "320px" }}>
+            <FormLabel htmlFor={teacherSearchFieldId}>
+              Фамилия, имя или ИНС
+            </FormLabel>
             <InputGroup>
               <InputLeftElement pointerEvents="none">
                 <SearchIcon color="gray.400" />
               </InputLeftElement>
               <Input
+                id={teacherSearchFieldId}
                 value={teacherSearch}
                 onChange={(event) => setTeacherSearch(event.target.value)}
                 placeholder="Например, Петров или 00000077"
@@ -818,12 +978,14 @@ const DeanTeachers = () => {
                   <Th>ФИО</Th>
                   <Th>ИНС</Th>
                   <Th>Email</Th>
+                  <Th>Предметы</Th>
+                  <Th textAlign="right">Действия</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {teachersLoading ? (
                   <Tr>
-                    <Td colSpan={3}>
+                    <Td colSpan={5}>
                       <HStack spacing={3}>
                         <Spinner size="sm" />
                         <Text color="gray.500">Обновление списка...</Text>
@@ -832,7 +994,7 @@ const DeanTeachers = () => {
                   </Tr>
                 ) : teachers.length === 0 ? (
                   <Tr>
-                    <Td colSpan={3}>
+                    <Td colSpan={5}>
                       <Text color="gray.500">Преподаватели не найдены</Text>
                     </Td>
                   </Tr>
@@ -848,6 +1010,61 @@ const DeanTeachers = () => {
                       </Td>
                       <Td>{teacher.ins ?? "—"}</Td>
                       <Td>{teacher.email ?? "—"}</Td>
+                      <Td>
+                        {(teacherSubjectsMap[teacher.id] ?? []).length === 0 ? (
+                          <Text color="gray.500">Предметы не назначены</Text>
+                        ) : (
+                          <UnorderedList pl={4} spacing={1}>
+                            {(teacherSubjectsMap[teacher.id] ?? []).map(
+                              (subject) => {
+                                const detachKey = `${subject.id}:${teacher.id}`;
+                                return (
+                                  <ListItem
+                                    key={`${teacher.id}-subject-${subject.id}`}
+                                  >
+                                    <HStack
+                                      justify="space-between"
+                                      align="center"
+                                      spacing={3}
+                                    >
+                                      <Text>{subject.name || "Без названия"}</Text>
+                                      <Button
+                                        size="xs"
+                                        variant="outline"
+                                        colorScheme="red"
+                                        onClick={() => {
+                                          setPendingDetachAssignment({
+                                            subjectId: subject.id,
+                                            subjectName: subject.name || "Без названия",
+                                            teacherId: teacher.id,
+                                            teacherName: formatFullName(
+                                              teacher.lastName,
+                                              teacher.firstName,
+                                              teacher.middleName
+                                            ),
+                                          });
+                                          detachConfirmDialog.onOpen();
+                                        }}
+                                      >
+                                        Открепить
+                                      </Button>
+                                    </HStack>
+                                  </ListItem>
+                                );
+                              }
+                            )}
+                          </UnorderedList>
+                        )}
+                      </Td>
+                      <Td textAlign="right">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => openEditTeacherDialog(teacher)}
+                        >
+                          Редактировать
+                        </Button>
+                      </Td>
                     </Tr>
                   ))
                 )}
@@ -881,6 +1098,183 @@ const DeanTeachers = () => {
           </Button>
         </HStack>
       </HStack>
+
+      <AlertDialog
+        isOpen={detachConfirmDialog.isOpen && !!pendingDetachAssignment}
+        leastDestructiveRef={detachCancelRef}
+        onClose={() => {
+          if (detachProcessing) return;
+          setPendingDetachAssignment(null);
+          detachConfirmDialog.onClose();
+        }}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Открепить преподавателя
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              {pendingDetachAssignment
+                ? `Открепить ${pendingDetachAssignment.teacherName} от предмета "${pendingDetachAssignment.subjectName}"?`
+                : ""}
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button
+                ref={detachCancelRef}
+                onClick={detachConfirmDialog.onClose}
+                isDisabled={detachProcessing}
+              >
+                Отмена
+              </Button>
+              <Button
+                colorScheme="red"
+                ml={3}
+                isLoading={detachProcessing}
+                onClick={async () => {
+                  if (!pendingDetachAssignment) return;
+                  setDetachProcessing(true);
+                  try {
+                    await handleDetachTeacher(
+                      pendingDetachAssignment.subjectId,
+                      pendingDetachAssignment.teacherId
+                    );
+                    setPendingDetachAssignment(null);
+                    detachConfirmDialog.onClose();
+                  } finally {
+                    setDetachProcessing(false);
+                  }
+                }}
+              >
+                Открепить
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+
+      <Modal
+        isOpen={editTeacherDialog.isOpen}
+        onClose={editTeacherDialog.onClose}
+        isCentered
+      >
+        <ModalOverlay />
+        <ModalContent as="form" onSubmit={handleEditTeacherSubmit}>
+          <ModalHeader>Редактирование преподавателя</ModalHeader>
+          <ModalCloseButton isDisabled={editTeacherLoading} />
+          <ModalBody>
+            <Stack spacing={4}>
+              {editingTeacher && (
+                <AvatarEditor
+                  name={formatFullName(
+                    editingTeacher.lastName,
+                    editingTeacher.firstName,
+                    editingTeacher.middleName
+                  )}
+                  avatarUrl={editingTeacher.avatarUrl}
+                  identifier={editingTeacher.id}
+                  onUpload={handleTeacherAvatarUpload}
+                  onDelete={editingTeacher.avatarUrl ? handleTeacherAvatarDelete : undefined}
+                  size="lg"
+                />
+              )}
+              <Stack spacing={3}>
+                <FormControl isRequired>
+                  <FormLabel>Имя</FormLabel>
+                  <Input
+                    value={editTeacherForm.firstName}
+                    onChange={(e) =>
+                    setEditTeacherForm((prev) => ({
+                      ...prev,
+                      firstName: e.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Фамилия</FormLabel>
+                <Input
+                  value={editTeacherForm.lastName}
+                  onChange={(e) =>
+                    setEditTeacherForm((prev) => ({
+                      ...prev,
+                      lastName: e.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Отчество</FormLabel>
+                <Input
+                  value={editTeacherForm.middleName}
+                  onChange={(e) =>
+                    setEditTeacherForm((prev) => ({
+                      ...prev,
+                      middleName: e.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Email</FormLabel>
+                <Input
+                  type="email"
+                  value={editTeacherForm.email}
+                  onChange={(e) =>
+                    setEditTeacherForm((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
+                  placeholder="teacher@example.com"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Должность</FormLabel>
+                <Input
+                  value={editTeacherForm.title}
+                  onChange={(e) =>
+                    setEditTeacherForm((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+                <FormControl>
+                  <FormLabel>Биография</FormLabel>
+                  <Input
+                    value={editTeacherForm.bio}
+                    onChange={(e) =>
+                    setEditTeacherForm((prev) => ({
+                      ...prev,
+                      bio: e.target.value,
+                    }))
+                  }
+                  placeholder="Краткая информация"
+                />
+              </FormControl>
+              </Stack>
+            </Stack>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="ghost"
+              mr={3}
+              onClick={editTeacherDialog.onClose}
+              isDisabled={editTeacherLoading}
+            >
+              Отмена
+            </Button>
+            <Button
+              colorScheme="brand"
+              type="submit"
+              isLoading={editTeacherLoading}
+            >
+              Сохранить
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

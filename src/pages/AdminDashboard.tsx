@@ -39,8 +39,15 @@ import {
   useColorModeValue,
   useDisclosure,
   useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
 } from "@chakra-ui/react";
-import { DeleteIcon, EditIcon, RepeatIcon, SearchIcon } from "@chakra-ui/icons";
+import { DeleteIcon, EditIcon, RepeatIcon, SearchIcon, UnlockIcon } from "@chakra-ui/icons";
 import {
   createDeanStaff,
   deleteDeanStaff,
@@ -55,8 +62,25 @@ import {
   restoreDeanStaff,
   deleteAdminUser,
   resetAdminUserPassword,
+  updateAdminUser,
+  uploadAdminUserAvatar,
+  deleteAdminUserAvatar,
 } from "../api/client";
+import AvatarEditor from "../components/AvatarEditor";
+import { invalidateAvatarCache } from "../hooks/useAvatarImage";
 import { formatFullName } from "../utils/name";
+
+const extractApiError = (error: unknown, fallback: string) => {
+  const axiosError = error as {
+    response?: { data?: { message?: string; error?: string; detail?: string } };
+  };
+  return (
+    axiosError?.response?.data?.message ??
+    axiosError?.response?.data?.error ??
+    axiosError?.response?.data?.detail ??
+    fallback
+  );
+};
 
 interface DeanForm {
   password: string;
@@ -152,6 +176,75 @@ const AdminDashboard = () => {
   } | null>(null);
   const [passwordValue, setPasswordValue] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const {
+    isOpen: isEditUserOpen,
+    onOpen: openEditUserModal,
+    onClose: closeEditUserModal,
+  } = useDisclosure();
+  const [editingUser, setEditingUser] = useState<Record<string, any> | null>(null);
+  const [editUserForm, setEditUserForm] = useState({
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    email: "",
+    title: "",
+    bio: "",
+    position: "",
+  });
+  const [editUserLoading, setEditUserLoading] = useState(false);
+  const handleUserAvatarUpload = async (file: File) => {
+    if (!editingUser) {
+      throw new Error("Пользователь не выбран");
+    }
+    try {
+      const previousPath = editingUser.avatarUrl;
+      const updated = await uploadAdminUserAvatar(editingUser.id, file);
+      invalidateAvatarCache(previousPath);
+      invalidateAvatarCache(updated.avatarUrl);
+      setEditingUser((prev) =>
+        prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
+      );
+      await Promise.all([
+        loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch),
+        loadDeletedUsers(
+          deletedRole,
+          deletedUsersMeta.offset,
+          deletedUsersSearch
+        ),
+      ]);
+    } catch (error) {
+      throw new Error(
+        extractApiError(error, "Не удалось обновить аватар пользователя")
+      );
+    }
+  };
+
+  const handleUserAvatarDelete = async () => {
+    if (!editingUser) {
+      throw new Error("Пользователь не выбран");
+    }
+    try {
+      const previousPath = editingUser.avatarUrl;
+      const updated = await deleteAdminUserAvatar(editingUser.id);
+      invalidateAvatarCache(previousPath);
+      invalidateAvatarCache(updated.avatarUrl);
+      setEditingUser((prev) =>
+        prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
+      );
+      await Promise.all([
+        loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch),
+        loadDeletedUsers(
+          deletedRole,
+          deletedUsersMeta.offset,
+          deletedUsersSearch
+        ),
+      ]);
+    } catch (error) {
+      throw new Error(
+        extractApiError(error, "Не удалось удалить аватар пользователя")
+      );
+    }
+  };
 
   const cardBg = useColorModeValue("white", "gray.800");
   const cardShadow = useColorModeValue("sm", "sm-dark");
@@ -261,6 +354,119 @@ const AdminDashboard = () => {
     } finally {
       setCreateLoading(false);
     }
+  };
+
+  const openEditUser = (user: any) => {
+    setEditingUser(user);
+    setEditUserForm({
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      middleName: user.middleName ?? "",
+      email: user.email ?? "",
+      title: user.teacherTitle ?? "",
+      bio: user.teacherBio ?? "",
+      position: user.staffPosition ?? "",
+    });
+    openEditUserModal();
+  };
+
+  const handleEditUserSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editingUser) {
+      return;
+    }
+    setEditUserLoading(true);
+    try {
+      const payload: Record<string, unknown> = {};
+      const trim = (value: string) => value.trim();
+      if (trim(editUserForm.firstName) !== (editingUser.firstName ?? "")) {
+        payload.firstName = trim(editUserForm.firstName);
+      }
+      if (trim(editUserForm.lastName) !== (editingUser.lastName ?? "")) {
+        payload.lastName = trim(editUserForm.lastName);
+      }
+      if (trim(editUserForm.middleName) !== (editingUser.middleName ?? "")) {
+        const next = trim(editUserForm.middleName);
+        payload.middleName = next ? next : null;
+      }
+      if (trim(editUserForm.email) !== (editingUser.email ?? "")) {
+        const next = trim(editUserForm.email);
+        payload.email = next ? next : null;
+      }
+      if (editingUser.role === "teacher") {
+        if (trim(editUserForm.title) !== (editingUser.teacherTitle ?? "")) {
+          const next = trim(editUserForm.title);
+          payload.title = next ? next : null;
+        }
+        if (trim(editUserForm.bio) !== (editingUser.teacherBio ?? "")) {
+          const next = trim(editUserForm.bio);
+          payload.bio = next ? next : null;
+        }
+      }
+      if (editingUser.role === "dean") {
+        if (trim(editUserForm.position) !== (editingUser.staffPosition ?? "")) {
+          const next = trim(editUserForm.position);
+          payload.position = next ? next : null;
+        }
+      }
+      if (Object.keys(payload).length === 0) {
+        toast({
+          title: "Изменения не внесены",
+          status: "info",
+          duration: 2500,
+          isClosable: true,
+        });
+        return;
+      }
+      await updateAdminUser(editingUser.id, payload);
+      toast({
+        title: "Профиль обновлён",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+      });
+      closeEditUserModal();
+      setEditingUser(null);
+      setEditUserForm({
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        email: "",
+        title: "",
+        bio: "",
+        position: "",
+      });
+      await loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch);
+      if (editingUser.role === "dean") {
+        await loadDeans(deansMeta.offset, deansSearch);
+      }
+    } catch (err) {
+      toast({
+        title: "Не удалось обновить профиль",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setEditUserLoading(false);
+    }
+  };
+
+  const handleCloseEditUserModal = () => {
+    if (editUserLoading) {
+      return;
+    }
+    closeEditUserModal();
+    setEditingUser(null);
+    setEditUserForm({
+      firstName: "",
+      lastName: "",
+      middleName: "",
+      email: "",
+      title: "",
+      bio: "",
+      position: "",
+    });
   };
 
   const openConfirmDialog = (
@@ -627,10 +833,20 @@ const AdminDashboard = () => {
             </Td>
             <Td textAlign="right">
               <HStack justify="flex-end" spacing={1}>
+                <Tooltip label="Редактировать профиль" placement="top">
+                  <IconButton
+                    aria-label="Редактировать профиль"
+                    icon={<EditIcon />}
+                    size="sm"
+                    colorScheme="brand"
+                    variant="ghost"
+                    onClick={() => openEditUser(user)}
+                  />
+                </Tooltip>
                 <Tooltip label="Сбросить пароль" placement="top">
                   <IconButton
                     aria-label="Сбросить пароль"
-                    icon={<EditIcon />}
+                    icon={<UnlockIcon />}
                     size="sm"
                     colorScheme="blue"
                     variant="ghost"
@@ -1231,6 +1447,140 @@ const AdminDashboard = () => {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      <Modal isOpen={isEditUserOpen} onClose={handleCloseEditUserModal} isCentered>
+        <ModalOverlay />
+        <ModalContent as="form" onSubmit={handleEditUserSubmit}>
+          <ModalHeader>Редактирование пользователя</ModalHeader>
+          <ModalCloseButton isDisabled={editUserLoading} />
+          <ModalBody>
+            <Stack spacing={4}>
+              {editingUser && (
+                <AvatarEditor
+                  name={formatFullName(
+                    editingUser.lastName,
+                    editingUser.firstName,
+                    editingUser.middleName
+                  )}
+                  avatarUrl={editingUser.avatarUrl}
+                  identifier={editingUser.id}
+                  onUpload={handleUserAvatarUpload}
+                  onDelete={editingUser.avatarUrl ? handleUserAvatarDelete : undefined}
+                  size="lg"
+                />
+              )}
+              <Stack spacing={3}>
+                <FormControl isRequired>
+                  <FormLabel>Имя</FormLabel>
+                  <Input
+                    value={editUserForm.firstName}
+                    onChange={(event) =>
+                    setEditUserForm((prev) => ({
+                      ...prev,
+                      firstName: event.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Фамилия</FormLabel>
+                <Input
+                  value={editUserForm.lastName}
+                  onChange={(event) =>
+                    setEditUserForm((prev) => ({
+                      ...prev,
+                      lastName: event.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Отчество</FormLabel>
+                <Input
+                  value={editUserForm.middleName}
+                  onChange={(event) =>
+                    setEditUserForm((prev) => ({
+                      ...prev,
+                      middleName: event.target.value,
+                    }))
+                  }
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Email</FormLabel>
+                <Input
+                  type="email"
+                  value={editUserForm.email}
+                  onChange={(event) =>
+                    setEditUserForm((prev) => ({
+                      ...prev,
+                      email: event.target.value,
+                    }))
+                  }
+                  placeholder="user@example.com"
+                />
+              </FormControl>
+              {editingUser?.role === "teacher" && (
+                <>
+                  <FormControl>
+                    <FormLabel>Должность</FormLabel>
+                    <Input
+                      value={editUserForm.title}
+                      onChange={(event) =>
+                        setEditUserForm((prev) => ({
+                          ...prev,
+                          title: event.target.value,
+                        }))
+                      }
+                    />
+                  </FormControl>
+                  <FormControl>
+                    <FormLabel>Биография</FormLabel>
+                    <Input
+                      value={editUserForm.bio}
+                      onChange={(event) =>
+                        setEditUserForm((prev) => ({
+                          ...prev,
+                          bio: event.target.value,
+                        }))
+                      }
+                      placeholder="Краткая информация"
+                    />
+                  </FormControl>
+                </>
+              )}
+              {editingUser?.role === "dean" && (
+                <FormControl>
+                  <FormLabel>Должность</FormLabel>
+                  <Input
+                    value={editUserForm.position}
+                    onChange={(event) =>
+                      setEditUserForm((prev) => ({
+                        ...prev,
+                        position: event.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
+              )}
+              </Stack>
+            </Stack>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="ghost"
+              mr={3}
+              onClick={handleCloseEditUserModal}
+              isDisabled={editUserLoading}
+            >
+              Отмена
+            </Button>
+            <Button colorScheme="brand" type="submit" isLoading={editUserLoading}>
+              Сохранить
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <AlertDialog
         leastDestructiveRef={cancelRef}

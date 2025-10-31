@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box, useColorModeValue } from "@chakra-ui/react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -16,16 +16,39 @@ import StudentDashboard from "./pages/StudentDashboard";
 import StudentSubjects from "./pages/StudentSubjects";
 import ProfilePage from "./pages/ProfilePage";
 import type { AuthResponse, UserSummary } from "./api/client";
-import { setAuthToken, fetchProfile } from "./api/client";
+import { setAuthToken, fetchProfile, AUTH_STORAGE_KEY } from "./api/client";
 
-const AUTH_STORAGE_KEY = "gradeflow.auth";
 const PROFILE_ROUTE = "/profile";
+const LAST_ROUTE_KEY = "gradeflow.lastRoute";
 
 const allowedRoutesByRole: Record<string, string[]> = {
   admin: ["/admin"],
   dean: ["/dean/teachers", "/dean/students", "/dean/groups", "/dean/subjects"],
   teacher: ["/teacher", "/teacher/gradebook"],
   student: ["/student", "/student/subjects"],
+};
+
+const isRouteAllowed = (role: string | undefined, pathname: string) => {
+  if (!role) {
+    return pathname === "/login" || pathname === PROFILE_ROUTE;
+  }
+  const allowed = new Set([PROFILE_ROUTE, ...(allowedRoutesByRole[role] ?? [])]);
+  if (allowed.has(pathname)) {
+    return true;
+  }
+  if (role === "dean" && pathname.startsWith("/dean/")) {
+    return true;
+  }
+  if (role === "teacher" && pathname.startsWith("/teacher")) {
+    return true;
+  }
+  if (role === "student" && pathname.startsWith("/student")) {
+    return true;
+  }
+  if (role === "admin" && pathname === "/admin") {
+    return true;
+  }
+  return false;
 };
 
 const PageTransition = ({ children }: { children: ReactNode }) => (
@@ -75,6 +98,7 @@ const App = () => {
     }
   });
   const [profile, setProfile] = useState<UserSummary | null>(null);
+  const routeRestoredRef = useRef(false);
 
   useEffect(() => {
     if (auth) {
@@ -88,6 +112,27 @@ const App = () => {
     }
   }, [auth]);
 
+  const applyProfile = useCallback((next: UserSummary) => {
+    setProfile(next);
+    setAuth((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const current = prev.user;
+      const needsUpdate =
+        current.avatarUrl !== next.avatarUrl ||
+        current.firstName !== next.firstName ||
+        current.lastName !== next.lastName ||
+        current.middleName !== next.middleName ||
+        current.email !== next.email ||
+        current.ins !== next.ins;
+      if (!needsUpdate) {
+        return prev;
+      }
+      return { ...prev, user: { ...current, ...next } };
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     if (!auth) {
@@ -96,7 +141,7 @@ const App = () => {
     fetchProfile()
       .then((data) => {
         if (!cancelled) {
-          setProfile(data);
+          applyProfile(data);
         }
       })
       .catch(() => {
@@ -105,7 +150,32 @@ const App = () => {
     return () => {
       cancelled = true;
     };
-  }, [auth]);
+  }, [auth, applyProfile]);
+
+  useEffect(() => {
+    if (!auth) {
+      return;
+    }
+    if (routeRestoredRef.current) {
+      return;
+    }
+    const storedRoute = window.localStorage.getItem(LAST_ROUTE_KEY);
+    routeRestoredRef.current = true;
+    if (
+      storedRoute &&
+      storedRoute !== location.pathname &&
+      isRouteAllowed(auth.user.role, storedRoute)
+    ) {
+      navigate(storedRoute, { replace: true });
+    }
+  }, [auth, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!auth || !routeRestoredRef.current) {
+      return;
+    }
+    window.localStorage.setItem(LAST_ROUTE_KEY, location.pathname);
+  }, [auth, location.pathname]);
 
   const defaultRouteForRole = useMemo(
     () => (role?: string | null) => {
@@ -128,21 +198,17 @@ const App = () => {
       }
       return;
     }
-    const allowed = new Set([PROFILE_ROUTE, ...(allowedRoutesByRole[auth.user.role] ?? [])]);
-
-    if (
-      !allowed.has(location.pathname) &&
-      !(auth.user.role === "dean" && location.pathname.startsWith("/dean/")) &&
-      !(auth.user.role === "teacher" && location.pathname.startsWith("/teacher")) &&
-      !(auth.user.role === "student" && location.pathname.startsWith("/student")) &&
-      location.pathname !== "/admin"
-    ) {
+    if (!routeRestoredRef.current) {
+      return;
+    }
+    if (!isRouteAllowed(auth.user.role, location.pathname)) {
       navigate(defaultRouteForRole(auth.user.role), { replace: true });
     }
   }, [auth, location.pathname, navigate, defaultRouteForRole]);
 
   const handleLogin = (payload: AuthResponse) => {
     setAuthToken(payload.accessToken);
+    routeRestoredRef.current = false;
     setAuth(payload);
     setProfile(payload.user);
     navigate(defaultRouteForRole(payload.user.role), { replace: true });
@@ -151,6 +217,8 @@ const App = () => {
   const handleLogout = () => {
     setAuth(null);
     setProfile(null);
+    routeRestoredRef.current = false;
+    window.localStorage.removeItem(LAST_ROUTE_KEY);
     navigate("/login", { replace: true });
   };
 
@@ -225,7 +293,7 @@ const App = () => {
             element={
               <ProtectedRoute>
                 {renderWithShell(
-                  <ProfilePage profile={profile} onProfileUpdate={setProfile} />
+                  <ProfilePage profile={profile} onProfileUpdate={applyProfile} />
                 )}
               </ProtectedRoute>
             }

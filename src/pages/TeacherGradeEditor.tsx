@@ -73,7 +73,8 @@ type GradeEntry = {
 
 type SessionLabel = { id: string; label: string; time: string; raw: any };
 
-const QUICK_GRADES = [5, 4.5, 4, 3.5, 3, 2.5, 2, 0];
+const QUICK_GRADES = [5, 4, 3, 2];
+const ALLOWED_GRADES = [2, 3, 4, 5];
 
 const TeacherGradeEditor = () => {
   const toast = useToast();
@@ -249,7 +250,7 @@ const TeacherGradeEditor = () => {
   }, [students, studentSearch]);
 
   const badgeForAverage = (value?: number) => {
-    if (value == null) return { color: "gray", text: "—" };
+    if (value == null) return { color: "gray", text: "." };
     if (value >= 4.5) return { color: "green", text: value.toFixed(2) };
     if (value >= 3) return { color: "yellow", text: value.toFixed(2) };
     return { color: "red", text: value.toFixed(2) };
@@ -287,10 +288,19 @@ const TeacherGradeEditor = () => {
       }
 
       const normalized = trimmed.replace(",", ".");
-      const numeric = parseFloat(normalized);
+      const numeric = Number.parseInt(normalized, 10);
       if (Number.isNaN(numeric)) {
         toast({
           title: "Некорректное значение",
+          status: "warning",
+          duration: 2500,
+          isClosable: true,
+        });
+        return false;
+      }
+      if (!ALLOWED_GRADES.includes(numeric)) {
+        toast({
+          title: "Допустимы только оценки 2, 3, 4 или 5",
           status: "warning",
           duration: 2500,
           isClosable: true,
@@ -326,7 +336,7 @@ const TeacherGradeEditor = () => {
     setNoteEditor({
       gradeId: entry.gradeId,
       notes: entry.notes ?? "",
-      value: entry.value ?? 0,
+      value: entry.value != null ? Math.round(entry.value) : 0,
       title: formatFullName(
         entry.student.lastName,
         entry.student.firstName,
@@ -441,7 +451,7 @@ const TeacherGradeEditor = () => {
               colorScheme={entry?.value != null ? "brand" : undefined}
               isLoading={isProcessing}
             >
-              {entry?.value != null ? entry.value.toFixed(2) : "—"}
+              {entry?.value != null ? entry.value.toFixed(0) : "."}
             </Button>
           </PopoverTrigger>
           <PopoverContent>
@@ -453,10 +463,10 @@ const TeacherGradeEditor = () => {
                 <NumberInput
                   value={draft}
                   onChange={(valueString) => setDraft(valueString)}
-                  min={0}
+                  min={2}
                   max={5}
-                  step={0.5}
-                  precision={1}
+                  step={1}
+                  precision={0}
                   allowMouseWheel
                 >
                   <NumberInputField
@@ -483,7 +493,7 @@ const TeacherGradeEditor = () => {
                       variant="outline"
                       onClick={() => void applyQuickGrade(value)}
                     >
-                      {value.toFixed(1)}
+                      {value.toString()}
                     </Button>
                   ))}
                 </HStack>
@@ -650,9 +660,10 @@ const TeacherGradeEditor = () => {
         <Box
           borderWidth="1px"
           borderRadius="xl"
-          overflow="hidden"
           boxShadow={cardShadow}
           bg={cardBg}
+          maxH="70vh"
+          overflow="auto"
         >
           <Table size="sm" variant="simple">
             <Thead bg={headerBg}>

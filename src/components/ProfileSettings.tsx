@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import type { AxiosError } from "axios";
 import {
   Alert,
   AlertIcon,
-  Avatar,
   Box,
   Button,
   Divider,
@@ -27,6 +26,8 @@ import {
   type UserSummary,
 } from "../api/client";
 import { formatFullName } from "../utils/name";
+import AvatarEditor from "./AvatarEditor";
+import { invalidateAvatarCache } from "../hooks/useAvatarImage";
 
 interface ProfileSettingsProps {
   profile?: UserSummary | null;
@@ -35,10 +36,12 @@ interface ProfileSettingsProps {
   onProfileUpdate?: (profile: UserSummary) => void;
 }
 
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
-
 const extractErrorMessage = (error: unknown, fallback: string) => {
-  const axiosError = error as AxiosError<{ message?: string; error?: string; detail?: string }>;
+  const axiosError = error as AxiosError<{
+    message?: string;
+    error?: string;
+    detail?: string;
+  }>;
   return (
     axiosError?.response?.data?.message ??
     axiosError?.response?.data?.error ??
@@ -53,17 +56,17 @@ const ProfileSettings = ({
   showName = true,
   onProfileUpdate,
 }: ProfileSettingsProps) => {
-  const [localProfile, setLocalProfile] = useState<UserSummary | null>(profile ?? null);
+  const [localProfile, setLocalProfile] = useState<UserSummary | null>(
+    profile ?? null
+  );
   const [profileLoading, setProfileLoading] = useState(!profile);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [avatarLoading, setAvatarLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     current: "",
     next: "",
     confirm: "",
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const toast = useToast();
 
   const cardBg = useColorModeValue("white", "gray.800");
@@ -119,74 +122,28 @@ const ProfileSettings = ({
     );
   }, [localProfile]);
 
-  const handleAvatarButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) {
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Поддерживаются только изображения",
-        status: "warning",
-      });
-      return;
-    }
-    if (file.size > MAX_AVATAR_SIZE) {
-      toast({
-        title: "Файл слишком большой",
-        description: "Максимальный размер аватара — 5 МБ",
-        status: "warning",
-      });
-      return;
-    }
-    setAvatarLoading(true);
-    try {
-      const updated = await uploadProfileAvatar(file);
-      setLocalProfile(updated);
-      setProfileError(null);
-      onProfileUpdate?.(updated);
-      toast({
-        title: "Аватар обновлён",
-        status: "success",
-      });
-    } catch (error) {
-      toast({
-        title: "Не удалось загрузить аватар",
-        description: extractErrorMessage(error, "Попробуйте выбрать другой файл"),
-        status: "error",
-      });
-    } finally {
-      setAvatarLoading(false);
-    }
+  const handleAvatarUpload = async (file: File) => {
+    const previousPath = localProfile?.avatarUrl;
+    const updated = await uploadProfileAvatar(file);
+    invalidateAvatarCache(previousPath);
+    invalidateAvatarCache(updated.avatarUrl);
+    setLocalProfile(updated);
+    setProfileError(null);
+    onProfileUpdate?.(updated);
   };
 
   const handleAvatarDelete = async () => {
-    setAvatarLoading(true);
-    try {
-      const updated = await deleteProfileAvatar();
-      setLocalProfile(updated);
-      onProfileUpdate?.(updated);
-      toast({
-        title: "Аватар удалён",
-        status: "info",
-      });
-    } catch (error) {
-      toast({
-        title: "Не удалось удалить аватар",
-        description: extractErrorMessage(error, "Повторите попытку позже"),
-        status: "error",
-      });
-    } finally {
-      setAvatarLoading(false);
-    }
+    const previousPath = localProfile?.avatarUrl;
+    const updated = await deleteProfileAvatar();
+    invalidateAvatarCache(previousPath, { keepMissing: true });
+    invalidateAvatarCache(updated.avatarUrl);
+    setLocalProfile(updated);
+    onProfileUpdate?.(updated);
   };
 
-  const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handlePasswordSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
     if (!passwordForm.current || !passwordForm.next || !passwordForm.confirm) {
       toast({
@@ -267,49 +224,48 @@ const ProfileSettings = ({
               align={{ base: "flex-start", md: "center" }}
               flexWrap="wrap"
             >
-              <Avatar
-                size="xl"
+              <AvatarEditor
                 name={fullName}
-                src={localProfile.avatarUrl ?? undefined}
-                bg="brand.500"
+                avatarUrl={localProfile.avatarUrl}
+                identifier={localProfile.id}
+                onUpload={async (file) => {
+                  try {
+                    await handleAvatarUpload(file);
+                  } catch (error) {
+                    throw new Error(
+                      extractErrorMessage(
+                        error,
+                        "Не удалось сохранить изображение"
+                      )
+                    );
+                  }
+                }}
+                onDelete={localProfile.avatarUrl ? async () => {
+                  try {
+                    await handleAvatarDelete();
+                  } catch (error) {
+                    throw new Error(
+                      extractErrorMessage(
+                        error,
+                        "Не удалось удалить аватар"
+                      )
+                    );
+                  }
+                } : undefined}
               />
-              <Stack spacing={3}>
-                {showName && (
-                  <Box>
-                    <Text fontWeight="semibold" fontSize="lg">
-                      {fullName}
-                    </Text>
-                    <Text color={subtleText}>
-                      ИНС: {localProfile.ins ?? "—"}
-                    </Text>
-                    <Text color={subtleText}>
-                      E-mail: {localProfile.email ?? "—"}
-                    </Text>
-                  </Box>
-                )}
-                <HStack spacing={3} flexWrap="wrap">
-                  <Button
-                    colorScheme="brand"
-                    onClick={handleAvatarButtonClick}
-                    isLoading={avatarLoading}
-                  >
-                    Обновить фото
-                  </Button>
-                  {localProfile.avatarUrl && (
-                    <Button
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={handleAvatarDelete}
-                      isLoading={avatarLoading}
-                    >
-                      Удалить фото
-                    </Button>
-                  )}
-                </HStack>
-                <Text fontSize="sm" color={subtleText}>
-                  Поддерживаются изображения форматов PNG, JPG, GIF. Размер не более 5 МБ.
-                </Text>
-              </Stack>
+              {showName && (
+                <Stack spacing={2} minW={{ base: "full", md: "auto" }}>
+                  <Text fontWeight="semibold" fontSize="lg">
+                    {fullName}
+                  </Text>
+                  <Text color={subtleText}>
+                    ИНС: {localProfile.ins ?? "—"}
+                  </Text>
+                  <Text color={subtleText}>
+                    E-mail: {localProfile.email ?? "—"}
+                  </Text>
+                </Stack>
+              )}
             </HStack>
 
             <Divider />
@@ -318,8 +274,11 @@ const ProfileSettings = ({
               <Stack spacing={4}>
                 <Text fontWeight="semibold">Смена пароля</Text>
                 <FormControl isRequired>
-                  <FormLabel>Текущий пароль</FormLabel>
+                  <FormLabel htmlFor="profile-current-password">
+                    Текущий пароль
+                  </FormLabel>
                   <Input
+                    id="profile-current-password"
                     type="password"
                     value={passwordForm.current}
                     onChange={(event) =>
@@ -332,8 +291,11 @@ const ProfileSettings = ({
                   />
                 </FormControl>
                 <FormControl isRequired>
-                  <FormLabel>Новый пароль</FormLabel>
+                  <FormLabel htmlFor="profile-new-password">
+                    Новый пароль
+                  </FormLabel>
                   <Input
+                    id="profile-new-password"
                     type="password"
                     value={passwordForm.next}
                     onChange={(event) =>
@@ -346,8 +308,11 @@ const ProfileSettings = ({
                   />
                 </FormControl>
                 <FormControl isRequired>
-                  <FormLabel>Повторите новый пароль</FormLabel>
+                  <FormLabel htmlFor="profile-confirm-password">
+                    Повторите новый пароль
+                  </FormLabel>
                   <Input
+                    id="profile-confirm-password"
                     type="password"
                     value={passwordForm.confirm}
                     onChange={(event) =>
@@ -386,13 +351,6 @@ const ProfileSettings = ({
           </Text>
         )}
       </Stack>
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        accept="image/*"
-        onChange={handleAvatarChange}
-      />
     </Box>
   );
 };
