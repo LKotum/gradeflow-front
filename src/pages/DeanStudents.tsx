@@ -701,7 +701,7 @@ const DeanStudents = () => {
               <SimpleGrid
                 columns={{ base: 1, md: 2 }}
                 spacing={1}
-                maxH="240px"
+                maxH="auto"
                 overflowY="auto"
                 pr={1}
               >

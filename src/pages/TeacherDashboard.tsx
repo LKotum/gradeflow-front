@@ -55,6 +55,19 @@ const TeacherDashboard = () => {
     load();
   }, []);
 
+  const profile = data?.profile ?? null;
+  const avatarSrc = useAvatarImage(profile.avatarUrl);
+  const avatarBg = useMemo(
+    () =>
+      getAvatarAccentColor(
+        profile.id,
+        profile.ins ?? profile.email ?? undefined
+      ),
+    [profile.email, profile.id, profile.ins]
+  );
+  const showAccent = !avatarSrc;
+  const subjects = Array.isArray(data.subjects) ? data.subjects : [];
+
   if (!data) {
     return (
       <Box p={6}>
@@ -69,18 +82,6 @@ const TeacherDashboard = () => {
       </Box>
     );
   }
-
-  const subjects = Array.isArray(data.subjects) ? data.subjects : [];
-  const avatarSrc = useAvatarImage(data.profile.avatarUrl);
-  const avatarBg = useMemo(
-    () =>
-      getAvatarAccentColor(
-        data.profile.id,
-        data.profile.ins ?? data.profile.email ?? undefined
-      ),
-    [data.profile.email, data.profile.id, data.profile.ins]
-  );
-  const showAccent = !avatarSrc;
 
   return (
     <Box p={6}>
@@ -103,18 +104,18 @@ const TeacherDashboard = () => {
             bg={showAccent ? avatarBg : undefined}
             color={showAccent ? "white" : undefined}
             name={formatFullName(
-              data.profile.lastName,
-              data.profile.firstName,
-              data.profile.middleName
+              profile?.lastName ?? "",
+              profile?.firstName ?? "",
+              profile?.middleName ?? ""
             )}
-            src={avatarSrc}
+            src={avatarSrc || undefined}
           />
           <Stack spacing={1.5}>
             <Heading size="md">
               {formatFullName(
-                data.profile.lastName,
-                data.profile.firstName,
-                data.profile.middleName
+                profile?.lastName ?? "",
+                profile?.firstName ?? "",
+                profile?.middleName ?? ""
               )}
             </Heading>
             <Text>ИНС: {data.profile.ins ?? "—"}</Text>
@@ -126,7 +127,7 @@ const TeacherDashboard = () => {
         Закреплённые предметы
       </Heading>
       <Stack spacing={4}>
-        {subjects.length === 0 ? (
+        {(subjects ?? []).length === 0 ? (
           <Box
             borderWidth="1px"
             borderRadius="xl"
@@ -137,7 +138,7 @@ const TeacherDashboard = () => {
             <Text color="gray.500">Закреплённых предметов пока нет</Text>
           </Box>
         ) : (
-          subjects.map((item: any) => (
+          (subjects ?? []).map((item: any) => (
             <Box
               key={item.subject.id}
               borderWidth="1px"
@@ -202,9 +203,9 @@ const TeacherDashboard = () => {
                   })}
                   {endsAt
                     ? ` — ${endsAt.toLocaleTimeString("ru-RU", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}`
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
                     : ""}
                 </Text>
                 <Text>

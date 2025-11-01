@@ -610,8 +610,9 @@ const DeanTeachers = () => {
           onSubmit={handleTeacherSubmit}
           transition="transform 0.2s ease, box-shadow 0.2s ease"
           _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
+          minH={{ base: "auto", lg: "100%" }}
         >
-          <Heading size="md">Добавить преподавателя</Heading>
+          <Heading size="md" mb={3}>Добавить преподавателя</Heading>
           <FormControl id={teacherFormFieldIds.firstName} isRequired>
             <FormLabel htmlFor={teacherFormFieldIds.firstName}>Имя</FormLabel>
             <Input
@@ -668,7 +669,13 @@ const DeanTeachers = () => {
               }
             />
           </FormControl>
-          <Button type="submit" colorScheme="brand" isLoading={formLoading}>
+          <Button
+            type="submit"
+            colorScheme="brand"
+            isLoading={formLoading}
+            alignSelf="flex-start"
+            mt={4}
+          >
             Сохранить преподавателя
           </Button>
         </Stack>
@@ -684,8 +691,9 @@ const DeanTeachers = () => {
           onSubmit={handleAssignmentSubmit}
           transition="transform 0.2s ease, box-shadow 0.2s ease"
           _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
+          minH={{ base: "auto", lg: "100%" }}
         >
-          <Heading size="md">Назначить преподавателя на предмет</Heading>
+          <Heading size="md" mb={3}>Назначить преподавателя на предмет</Heading>
           <FormControl id={assignmentFieldIds.subject} isRequired>
             <FormLabel htmlFor={assignmentFieldIds.subject}>Предмет</FormLabel>
             <Select
@@ -735,6 +743,8 @@ const DeanTeachers = () => {
             colorScheme="brand"
             isLoading={formLoading}
             isDisabled={!assignmentForm.subjectId || !assignmentForm.teacherId}
+            alignSelf="flex-start"
+            mt={4}
           >
             Назначить
           </Button>
@@ -791,10 +801,10 @@ const DeanTeachers = () => {
                 !sessionForm.subjectId
                   ? "Сначала выберите предмет"
                   : sessionTeachersLoading
-                  ? "Загрузка..."
-                  : sessionAssignedTeachers.length === 0
-                  ? "Нет назначенных преподавателей"
-                  : "Выберите преподавателя"
+                    ? "Загрузка..."
+                    : sessionAssignedTeachers.length === 0
+                      ? "Нет назначенных преподавателей"
+                      : "Выберите преподавателя"
               }
               value={sessionForm.teacherId}
               onChange={(e) =>
@@ -1186,76 +1196,76 @@ const DeanTeachers = () => {
                   <Input
                     value={editTeacherForm.firstName}
                     onChange={(e) =>
-                    setEditTeacherForm((prev) => ({
-                      ...prev,
-                      firstName: e.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Фамилия</FormLabel>
-                <Input
-                  value={editTeacherForm.lastName}
-                  onChange={(e) =>
-                    setEditTeacherForm((prev) => ({
-                      ...prev,
-                      lastName: e.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Отчество</FormLabel>
-                <Input
-                  value={editTeacherForm.middleName}
-                  onChange={(e) =>
-                    setEditTeacherForm((prev) => ({
-                      ...prev,
-                      middleName: e.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  value={editTeacherForm.email}
-                  onChange={(e) =>
-                    setEditTeacherForm((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                  placeholder="teacher@example.com"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Должность</FormLabel>
-                <Input
-                  value={editTeacherForm.title}
-                  onChange={(e) =>
-                    setEditTeacherForm((prev) => ({
-                      ...prev,
-                      title: e.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
+                      setEditTeacherForm((prev) => ({
+                        ...prev,
+                        firstName: e.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
+                <FormControl isRequired>
+                  <FormLabel>Фамилия</FormLabel>
+                  <Input
+                    value={editTeacherForm.lastName}
+                    onChange={(e) =>
+                      setEditTeacherForm((prev) => ({
+                        ...prev,
+                        lastName: e.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Отчество</FormLabel>
+                  <Input
+                    value={editTeacherForm.middleName}
+                    onChange={(e) =>
+                      setEditTeacherForm((prev) => ({
+                        ...prev,
+                        middleName: e.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Email</FormLabel>
+                  <Input
+                    type="email"
+                    value={editTeacherForm.email}
+                    onChange={(e) =>
+                      setEditTeacherForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    placeholder="teacher@example.com"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Должность</FormLabel>
+                  <Input
+                    value={editTeacherForm.title}
+                    onChange={(e) =>
+                      setEditTeacherForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
                 <FormControl>
                   <FormLabel>Биография</FormLabel>
                   <Input
                     value={editTeacherForm.bio}
                     onChange={(e) =>
-                    setEditTeacherForm((prev) => ({
-                      ...prev,
-                      bio: e.target.value,
-                    }))
-                  }
-                  placeholder="Краткая информация"
-                />
-              </FormControl>
+                      setEditTeacherForm((prev) => ({
+                        ...prev,
+                        bio: e.target.value,
+                      }))
+                    }
+                    placeholder="Краткая информация"
+                  />
+                </FormControl>
               </Stack>
             </Stack>
           </ModalBody>
