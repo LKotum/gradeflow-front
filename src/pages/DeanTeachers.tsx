@@ -60,7 +60,6 @@ import {
 } from "../api/client";
 import { formatFullName } from "../utils/name";
 import AvatarEditor from "../components/AvatarEditor";
-import { invalidateAvatarCache } from "../hooks/useAvatarImage";
 
 const extractApiError = (error: unknown, fallback: string) => {
   const axiosError = error as {
@@ -495,10 +494,7 @@ const DeanTeachers = () => {
         throw new Error("Преподаватель не выбран");
       }
       try {
-        const previousPath = editingTeacher.avatarUrl;
         const updated = await uploadDeanTeacherAvatar(editingTeacher.id, file);
-        invalidateAvatarCache(previousPath);
-        invalidateAvatarCache(updated.avatarUrl);
         setEditingTeacher((prev) =>
           prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
         );
@@ -530,12 +526,7 @@ const DeanTeachers = () => {
       throw new Error("Преподаватель не выбран");
     }
     try {
-      const previousPath = editingTeacher.avatarUrl;
-      if (previousPath) {
-        invalidateAvatarCache(previousPath, { markMissing: true });
-      }
       const updated = await deleteDeanTeacherAvatar(editingTeacher.id);
-      invalidateAvatarCache(updated.avatarUrl);
       setEditingTeacher((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
       );
@@ -545,10 +536,6 @@ const DeanTeachers = () => {
         )
       );
     } catch (error) {
-      const previousPath = editingTeacher.avatarUrl;
-      if (previousPath) {
-        invalidateAvatarCache(previousPath);
-      }
       throw new Error(
         extractApiError(error, "Не удалось удалить аватар преподавателя")
       );

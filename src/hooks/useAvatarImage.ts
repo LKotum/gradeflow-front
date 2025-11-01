@@ -2,10 +2,6 @@ import { useEffect, useState } from "react";
 
 import { getCachedAccessToken, resolveAssetUrl } from "../api/client";
 
-export const invalidateAvatarCache = (_path?: string | null, _opts?: { markMissing?: boolean }) => {
-  // caching removed; placeholder to keep existing calls intact
-};
-
 export const useAvatarImage = (path?: string | null) => {
   const [src, setSrc] = useState<string | undefined>();
 

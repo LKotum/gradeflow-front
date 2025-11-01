@@ -27,7 +27,6 @@ import {
 } from "../api/client";
 import { formatFullName } from "../utils/name";
 import AvatarEditor from "./AvatarEditor";
-import { invalidateAvatarCache } from "../hooks/useAvatarImage";
 
 interface ProfileSettingsProps {
   profile?: UserSummary | null;
@@ -123,31 +122,19 @@ const ProfileSettings = ({
   }, [localProfile]);
 
   const handleAvatarUpload = async (file: File) => {
-    // const previousPath = localProfile?.avatarUrl ?? undefined;
     const updated = await uploadProfileAvatar(file);
-    // invalidateAvatarCache(previousPath);
-    // invalidateAvatarCache(updated.avatarUrl);
     setLocalProfile((prev) => (prev ? { ...prev, avatarUrl: updated.avatarUrl } : updated));
     setProfileError(null);
     onProfileUpdate?.(updated);
   };
 
   const handleAvatarDelete = async () => {
-    const previousPath = localProfile?.avatarUrl ?? undefined;
     try {
-      if (previousPath) {
-        // invalidateAvatarCache(previousPath, { markMissing: true });
-      }
       const updated = await deleteProfileAvatar();
-      // invalidateAvatarCache(updated.avatarUrl);
-      setLocalProfile((prev) =>
-        prev ? { ...prev, avatarUrl: undefined } : updated
-      );
-      onProfileUpdate?.(updated);
+      const next: UserSummary = { ...updated, avatarUrl: undefined };
+      setLocalProfile((prev) => ({ ...(prev ?? {}), ...updated, avatarUrl: undefined }));
+      onProfileUpdate?.(next);
     } catch (error) {
-      if (previousPath) {
-        // invalidateAvatarCache(previousPath);
-      }
       throw error;
     }
   };

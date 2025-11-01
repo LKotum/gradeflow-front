@@ -67,7 +67,6 @@ import {
   deleteAdminUserAvatar,
 } from "../api/client";
 import AvatarEditor from "../components/AvatarEditor";
-import { invalidateAvatarCache } from "../hooks/useAvatarImage";
 import { formatFullName } from "../utils/name";
 
 const extractApiError = (error: unknown, fallback: string) => {
@@ -197,10 +196,7 @@ const AdminDashboard = () => {
       throw new Error("Пользователь не выбран");
     }
     try {
-      const previousPath = editingUser.avatarUrl;
       const updated = await uploadAdminUserAvatar(editingUser.id, file);
-      invalidateAvatarCache(previousPath);
-      invalidateAvatarCache(updated.avatarUrl);
       setEditingUser((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
       );
@@ -226,12 +222,7 @@ const AdminDashboard = () => {
       throw new Error("Пользователь не выбран");
     }
     try {
-      const previousPath = editingUser.avatarUrl;
-      if (previousPath) {
-        invalidateAvatarCache(previousPath, { markMissing: true });
-      }
       const updated = await deleteAdminUserAvatar(editingUser.id);
-      invalidateAvatarCache(updated.avatarUrl);
       setEditingUser((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
       );
@@ -246,10 +237,7 @@ const AdminDashboard = () => {
         )
       );
     } catch (error) {
-      const previousPath = editingUser.avatarUrl;
-      if (previousPath) {
-        invalidateAvatarCache(previousPath);
-      }
+
       throw new Error(
         extractApiError(error, "Не удалось удалить аватар пользователя")
       );

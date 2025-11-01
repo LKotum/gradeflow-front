@@ -63,7 +63,6 @@ import {
 } from "../api/client";
 import { formatFullName } from "../utils/name";
 import AvatarEditor from "../components/AvatarEditor";
-import { invalidateAvatarCache } from "../hooks/useAvatarImage";
 
 const PAGE_LIMIT = 20;
 
@@ -394,10 +393,7 @@ const DeanStudents = () => {
         throw new Error("Студент не выбран");
       }
       try {
-        const previousPath = editingStudent.avatarUrl;
         const updated = await uploadDeanStudentAvatar(editingStudent.id, file);
-        invalidateAvatarCache(previousPath);
-        invalidateAvatarCache(updated.avatarUrl);
         setEditingStudent((prev) =>
           prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
         );
@@ -422,12 +418,7 @@ const DeanStudents = () => {
       throw new Error("Студент не выбран");
     }
     try {
-      const previousPath = editingStudent.avatarUrl;
-      if (previousPath) {
-        invalidateAvatarCache(previousPath, { markMissing: true });
-      }
       const updated = await deleteDeanStudentAvatar(editingStudent.id);
-      invalidateAvatarCache(updated.avatarUrl);
       setEditingStudent((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
       );
@@ -437,10 +428,6 @@ const DeanStudents = () => {
         )
       );
     } catch (error) {
-      const previousPath = editingStudent.avatarUrl;
-      if (previousPath) {
-        invalidateAvatarCache(previousPath);
-      }
       throw new Error(
         extractApiError(error, "Не удалось удалить аватар студента")
       );

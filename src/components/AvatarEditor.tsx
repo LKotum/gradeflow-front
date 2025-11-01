@@ -25,7 +25,6 @@ import {
 } from "@chakra-ui/react";
 import { getAvatarAccentColor } from "../utils/avatarColor";
 import {
-  invalidateAvatarCache,
   useAvatarImage,
 } from "../hooks/useAvatarImage";
 
@@ -178,12 +177,10 @@ const AvatarEditor = ({
     if (!draft) {
       return;
     }
-    const previousPath = avatarUrl;
     try {
       setUploading(true);
       const cropped = await createCroppedFile(draft);
       await onUpload(cropped);
-      invalidateAvatarCache(previousPath);
       cleanupDraft();
       toast({ title: "Аватар обновлён", status: "success" });
     } catch (error) {
@@ -203,17 +200,19 @@ const AvatarEditor = ({
     if (!onDelete) {
       return;
     }
+    if (removing) {
+      return;
+    }
     try {
       setRemoving(true);
       if (avatarUrl) {
-        invalidateAvatarCache(avatarUrl, { markMissing: true });
+        await onDelete();
       }
-      await onDelete();
       toast({ title: "Аватар удалён", status: "info" });
-    } catch (error) {
-      if (avatarUrl) {
-        invalidateAvatarCache(avatarUrl);
+      if (!avatarUrl) {
+        toast({ title: "Аватар отсутствует", status: "info" });
       }
+    } catch (error) {
       const description =
         error instanceof Error ? error.message : undefined;
       toast({
