@@ -231,6 +231,7 @@ const DeanSubjects = () => {
               <FormLabel htmlFor="create-subject-code">Код</FormLabel>
               <Input
                 id="create-subject-code"
+                name="code"
                 value={subjectForm.code}
                 onChange={(e) =>
                   setSubjectForm({ ...subjectForm, code: e.target.value })
@@ -242,6 +243,7 @@ const DeanSubjects = () => {
               <FormLabel htmlFor="create-subject-name">Название</FormLabel>
               <Input
                 id="create-subject-name"
+                name="name"
                 value={subjectForm.name}
                 onChange={(e) =>
                   setSubjectForm({ ...subjectForm, name: e.target.value })
@@ -255,6 +257,7 @@ const DeanSubjects = () => {
               </FormLabel>
               <Input
                 id="create-subject-description"
+                name="description"
                 value={subjectForm.description}
                 onChange={(e) =>
                   setSubjectForm({
@@ -358,6 +361,7 @@ const DeanSubjects = () => {
               <FormLabel htmlFor="filter-from">Дата с</FormLabel>
               <Input
                 id="filter-from"
+                name="from"
                 type="date"
                 value={scheduleFilters.from}
                 onChange={(e) =>
@@ -372,6 +376,7 @@ const DeanSubjects = () => {
               <FormLabel htmlFor="filter-to">Дата по</FormLabel>
               <Input
                 id="filter-to"
+                name="to"
                 type="date"
                 value={scheduleFilters.to}
                 onChange={(e) =>

@@ -123,22 +123,33 @@ const ProfileSettings = ({
   }, [localProfile]);
 
   const handleAvatarUpload = async (file: File) => {
-    const previousPath = localProfile?.avatarUrl;
+    // const previousPath = localProfile?.avatarUrl ?? undefined;
     const updated = await uploadProfileAvatar(file);
-    invalidateAvatarCache(previousPath);
-    invalidateAvatarCache(updated.avatarUrl);
-    setLocalProfile(updated);
+    // invalidateAvatarCache(previousPath);
+    // invalidateAvatarCache(updated.avatarUrl);
+    setLocalProfile((prev) => (prev ? { ...prev, avatarUrl: updated.avatarUrl } : updated));
     setProfileError(null);
     onProfileUpdate?.(updated);
   };
 
   const handleAvatarDelete = async () => {
-    const previousPath = localProfile?.avatarUrl;
-    const updated = await deleteProfileAvatar();
-    invalidateAvatarCache(previousPath, { keepMissing: true });
-    invalidateAvatarCache(updated.avatarUrl);
-    setLocalProfile(updated);
-    onProfileUpdate?.(updated);
+    const previousPath = localProfile?.avatarUrl ?? undefined;
+    try {
+      if (previousPath) {
+        // invalidateAvatarCache(previousPath, { markMissing: true });
+      }
+      const updated = await deleteProfileAvatar();
+      // invalidateAvatarCache(updated.avatarUrl);
+      setLocalProfile((prev) =>
+        prev ? { ...prev, avatarUrl: undefined } : updated
+      );
+      onProfileUpdate?.(updated);
+    } catch (error) {
+      if (previousPath) {
+        // invalidateAvatarCache(previousPath);
+      }
+      throw error;
+    }
   };
 
   const handlePasswordSubmit = async (
@@ -279,6 +290,7 @@ const ProfileSettings = ({
                   </FormLabel>
                   <Input
                     id="profile-current-password"
+                    name="currentPassword"
                     type="password"
                     value={passwordForm.current}
                     onChange={(event) =>
@@ -296,6 +308,7 @@ const ProfileSettings = ({
                   </FormLabel>
                   <Input
                     id="profile-new-password"
+                    name="newPassword"
                     type="password"
                     value={passwordForm.next}
                     onChange={(event) =>
@@ -313,6 +326,7 @@ const ProfileSettings = ({
                   </FormLabel>
                   <Input
                     id="profile-confirm-password"
+                    name="confirmPassword"
                     type="password"
                     value={passwordForm.confirm}
                     onChange={(event) =>

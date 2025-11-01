@@ -156,11 +156,19 @@ const DeanGroups = () => {
           <Stack spacing={3} flex="1">
             <FormControl isRequired>
               <FormLabel>Название</FormLabel>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                name="groupName"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </FormControl>
             <FormControl>
               <FormLabel>Описание</FormLabel>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Input
+                name="groupDescription"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </FormControl>
           </Stack>
           <Button

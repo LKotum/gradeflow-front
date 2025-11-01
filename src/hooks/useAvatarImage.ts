@@ -1,86 +1,48 @@
 import { useEffect, useState } from "react";
 
-import {
-  getCachedAccessToken,
-  resolveAssetUrl,
-} from "../api/client";
+import { getCachedAccessToken, resolveAssetUrl } from "../api/client";
 
-const objectUrlCache = new Map<string, string>();
-const missingCache = new Set<string>();
-
-const normalizePath = (url: string) => {
-  const question = url.indexOf("?");
-  return question === -1 ? url : url.slice(0, question);
-};
-
-export const invalidateAvatarCache = (
-  path?: string | null,
-  opts?: { keepMissing?: boolean }
-) => {
-  const resolved = resolveAssetUrl(path);
-  if (!resolved) return;
-  const normalized = normalizePath(resolved);
-
-  if (!opts?.keepMissing) {
-    missingCache.delete(normalized);
-  }
-
-  for (const key of Array.from(objectUrlCache.keys())) {
-    if (normalizePath(key) === normalized) {
-      const blob = objectUrlCache.get(key);
-      if (blob) URL.revokeObjectURL(blob);
-      objectUrlCache.delete(key);
-    }
-  }
+export const invalidateAvatarCache = (_path?: string | null, _opts?: { markMissing?: boolean }) => {
+  // caching removed; placeholder to keep existing calls intact
 };
 
 export const useAvatarImage = (path?: string | null) => {
   const [src, setSrc] = useState<string | undefined>();
 
   useEffect(() => {
-    let didCancel = false;
+    let cancelled = false;
+    if (!path) {
+      setSrc(undefined);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (path.startsWith("blob:")) {
+      setSrc(path);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const resolved = resolveAssetUrl(path);
     if (!resolved) {
       setSrc(undefined);
       return () => {
-        didCancel = true;
-      };
-    }
-
-    if (resolved.startsWith("blob:")) {
-      setSrc(resolved);
-      return () => {
-        didCancel = true;
-      };
-    }
-
-    const normalized = normalizePath(resolved);
-
-    if (missingCache.has(normalized)) {
-      setSrc(undefined);
-      return () => {
-        didCancel = true;
-      };
-    }
-
-    const cachedObjectUrl = objectUrlCache.get(resolved);
-    if (cachedObjectUrl) {
-      setSrc(cachedObjectUrl);
-      return () => {
-        didCancel = true;
+        cancelled = true;
       };
     }
 
     const token = getCachedAccessToken();
     if (!token) {
-      missingCache.add(normalized);
       setSrc(undefined);
       return () => {
-        didCancel = true;
+        cancelled = true;
       };
     }
 
     const controller = new AbortController();
+    let objectUrl: string | null = null;
 
     fetch(resolved, {
       headers: { Authorization: `Bearer ${token}` },
@@ -89,17 +51,6 @@ export const useAvatarImage = (path?: string | null) => {
     })
       .then((resp) => {
         if (resp.status === 404) {
-          missingCache.add(normalized);
-          for (const key of Array.from(objectUrlCache.keys())) {
-            if (normalizePath(key) === normalized) {
-              const blob = objectUrlCache.get(key);
-              if (blob) {
-                URL.revokeObjectURL(blob);
-              }
-              objectUrlCache.delete(key);
-            }
-          }
-          setSrc(undefined);
           return null;
         }
         if (!resp.ok) {
@@ -108,37 +59,28 @@ export const useAvatarImage = (path?: string | null) => {
         return resp.blob();
       })
       .then((blob) => {
-        if (!blob || didCancel) {
+        if (cancelled) {
           return;
         }
-        const objectUrl = URL.createObjectURL(blob);
-        const existing = objectUrlCache.get(resolved);
-        if (existing) {
-          URL.revokeObjectURL(existing);
+        if (!blob) {
+          setSrc(undefined);
+          return;
         }
-        missingCache.delete(normalized);
-        objectUrlCache.set(resolved, objectUrl);
+        objectUrl = URL.createObjectURL(blob);
         setSrc(objectUrl);
       })
       .catch(() => {
-        if (!didCancel) {
-          missingCache.add(normalized);
-          for (const key of Array.from(objectUrlCache.keys())) {
-            if (normalizePath(key) === normalized) {
-              const blob = objectUrlCache.get(key);
-              if (blob) {
-                URL.revokeObjectURL(blob);
-              }
-              objectUrlCache.delete(key);
-            }
-          }
+        if (!cancelled) {
           setSrc(undefined);
         }
       });
 
     return () => {
-      didCancel = true;
+      cancelled = true;
       controller.abort();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, [path]);
 

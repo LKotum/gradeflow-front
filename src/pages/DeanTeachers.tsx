@@ -502,10 +502,13 @@ const DeanTeachers = () => {
         setEditingTeacher((prev) =>
           prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
         );
-        await Promise.all([
-          loadTeachers(teachersMeta.offset, teacherSearch),
-          buildTeacherAssignments(subjects),
-        ]);
+        setTeachers((prev) =>
+          prev.map((teacher) =>
+            teacher.id === updated.id
+              ? { ...teacher, avatarUrl: updated.avatarUrl }
+              : teacher
+          )
+        );
       } catch (error) {
         throw new Error(
           extractApiError(error, "Не удалось обновить аватар преподавателя")
@@ -528,17 +531,24 @@ const DeanTeachers = () => {
     }
     try {
       const previousPath = editingTeacher.avatarUrl;
+      if (previousPath) {
+        invalidateAvatarCache(previousPath, { markMissing: true });
+      }
       const updated = await deleteDeanTeacherAvatar(editingTeacher.id);
-      invalidateAvatarCache(previousPath);
       invalidateAvatarCache(updated.avatarUrl);
       setEditingTeacher((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
       );
-      await Promise.all([
-        loadTeachers(teachersMeta.offset, teacherSearch),
-        buildTeacherAssignments(subjects),
-      ]);
+      setTeachers((prev) =>
+        prev.map((teacher) =>
+          teacher.id === updated.id ? { ...teacher, avatarUrl: null } : teacher
+        )
+      );
     } catch (error) {
+      const previousPath = editingTeacher.avatarUrl;
+      if (previousPath) {
+        invalidateAvatarCache(previousPath);
+      }
       throw new Error(
         extractApiError(error, "Не удалось удалить аватар преподавателя")
       );
@@ -619,6 +629,7 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={teacherFormFieldIds.firstName}>Имя</FormLabel>
             <Input
               id={teacherFormFieldIds.firstName}
+              name="firstName"
               value={teacherForm.firstName}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, firstName: e.target.value })
@@ -629,6 +640,7 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={teacherFormFieldIds.lastName}>Фамилия</FormLabel>
             <Input
               id={teacherFormFieldIds.lastName}
+              name="lastName"
               value={teacherForm.lastName}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, lastName: e.target.value })
@@ -639,6 +651,7 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={teacherFormFieldIds.middleName}>Отчество</FormLabel>
             <Input
               id={teacherFormFieldIds.middleName}
+              name="middleName"
               value={teacherForm.middleName}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, middleName: e.target.value })
@@ -649,6 +662,7 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={teacherFormFieldIds.email}>Электронная почта</FormLabel>
             <Input
               id={teacherFormFieldIds.email}
+              name="email"
               value={teacherForm.email}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, email: e.target.value })
@@ -835,6 +849,7 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={sessionFieldIds.date}>Дата</FormLabel>
             <Input
               id={sessionFieldIds.date}
+              name="sessionDate"
               type="date"
               value={sessionForm.date}
               onChange={(e) =>
@@ -863,6 +878,7 @@ const DeanTeachers = () => {
           <FormLabel htmlFor={sessionFieldIds.topic}>Тема занятия</FormLabel>
           <Input
             id={sessionFieldIds.topic}
+            name="sessionTopic"
             value={sessionForm.topic}
             onChange={(e) =>
               setSessionForm({ ...sessionForm, topic: e.target.value })

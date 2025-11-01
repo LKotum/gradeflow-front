@@ -87,16 +87,9 @@ const AvatarEditor = ({
   const [removing, setRemoving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef<{
-    active: boolean;
-    pointerId: number | null;
-    startX: number;
-    startY: number;
-    baseOffsetX: number;
-    baseOffsetY: number;
-  }>({
+  const dragState = useRef({
     active: false,
-    pointerId: null,
+    pointerId: null as number | null,
     startX: 0,
     startY: 0,
     baseOffsetX: 0,
@@ -212,10 +205,15 @@ const AvatarEditor = ({
     }
     try {
       setRemoving(true);
+      if (avatarUrl) {
+        invalidateAvatarCache(avatarUrl, { markMissing: true });
+      }
       await onDelete();
-      invalidateAvatarCache(avatarUrl, { keepMissing: true });
       toast({ title: "Аватар удалён", status: "info" });
     } catch (error) {
+      if (avatarUrl) {
+        invalidateAvatarCache(avatarUrl);
+      }
       const description =
         error instanceof Error ? error.message : undefined;
       toast({
@@ -227,6 +225,22 @@ const AvatarEditor = ({
       setRemoving(false);
     }
   }, [avatarUrl, onDelete, toast]);
+
+  const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    if (!draft) {
+      return;
+    }
+    event.preventDefault();
+    const delta = -event.deltaY / 600;
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            zoom: clamp(prev.zoom + delta, 1, 3),
+          }
+        : prev
+    );
+  }, [draft]);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -259,32 +273,22 @@ const AvatarEditor = ({
     const maxOffset = 1;
     const factor = 2 / CROPPER_PREVIEW_SIZE;
     const nextX = clamp(
-      dragState.current.baseOffsetX - deltaX * factor,
+      dragState.current.baseOffsetX + deltaX * factor,
       -maxOffset,
       maxOffset
     );
     const nextY = clamp(
-      dragState.current.baseOffsetY - deltaY * factor,
+      dragState.current.baseOffsetY + deltaY * factor,
       -maxOffset,
       maxOffset
     );
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            offsetX: nextX,
-            offsetY: nextY,
-          }
-        : prev
-    );
+    setDraft((prev) => (prev ? { ...prev, offsetX: nextX, offsetY: nextY } : prev));
   }, [draft]);
 
-  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (dragState.current.pointerId !== null) {
-      const element = previewRef.current;
-      if (element) {
-        element.releasePointerCapture(dragState.current.pointerId);
-      }
+  const stopDragging = useCallback(() => {
+    const element = previewRef.current;
+    if (dragState.current.pointerId !== null && element) {
+      element.releasePointerCapture(dragState.current.pointerId);
     }
     dragState.current = {
       active: false,
@@ -296,30 +300,14 @@ const AvatarEditor = ({
     };
   }, []);
 
-  const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (!draft) {
-      return;
-    }
-    event.preventDefault();
-    const delta = -event.deltaY / 600;
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            zoom: clamp(prev.zoom + delta, 1, 3),
-          }
-        : prev
-    );
-  }, [draft]);
-
   useEffect(() => () => cleanupDraft(), [cleanupDraft]);
 
   const renderPreview = () => {
     if (!draft) {
       return null;
     }
-    const backgroundPositionX = 50 + draft.offsetX * 50;
-    const backgroundPositionY = 50 + draft.offsetY * 50;
+    const backgroundPositionX = 50 - draft.offsetX * 50;
+    const backgroundPositionY = 50 - draft.offsetY * 50;
     return (
       <Box
         ref={previewRef}
@@ -337,8 +325,9 @@ const AvatarEditor = ({
         cursor={dragState.current.active ? "grabbing" : "grab"}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        onPointerUp={stopDragging}
+        onPointerLeave={stopDragging}
+        onPointerCancel={stopDragging}
         onWheel={handleWheel}
         tabIndex={0}
         role="presentation"
@@ -473,10 +462,8 @@ const createCroppedFile = async (draft: AvatarDraft): Promise<File> => {
   const cropSize = minSide / draft.zoom;
   const maxOffsetX = (draft.naturalWidth - cropSize) / 2;
   const maxOffsetY = (draft.naturalHeight - cropSize) / 2;
-  const originX =
-    (draft.naturalWidth - cropSize) / 2 + draft.offsetX * maxOffsetX;
-  const originY =
-    (draft.naturalHeight - cropSize) / 2 + draft.offsetY * maxOffsetY;
+  const originX = (draft.naturalWidth - cropSize) / 2 - draft.offsetX * maxOffsetX;
+  const originY = (draft.naturalHeight - cropSize) / 2 - draft.offsetY * maxOffsetY;
   const canvas = document.createElement("canvas");
   const canvasSize = 512;
   canvas.width = canvasSize;

@@ -401,7 +401,13 @@ const DeanStudents = () => {
         setEditingStudent((prev) =>
           prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
         );
-        await loadStudents(studentsMeta.offset, search);
+        setStudents((prev) =>
+          prev.map((student) =>
+            student.id === updated.id
+              ? { ...student, avatarUrl: updated.avatarUrl }
+              : student
+          )
+        );
       } catch (error) {
         throw new Error(
           extractApiError(error, "Не удалось обновить аватар студента")
@@ -417,14 +423,24 @@ const DeanStudents = () => {
     }
     try {
       const previousPath = editingStudent.avatarUrl;
+      if (previousPath) {
+        invalidateAvatarCache(previousPath, { markMissing: true });
+      }
       const updated = await deleteDeanStudentAvatar(editingStudent.id);
-      invalidateAvatarCache(previousPath);
       invalidateAvatarCache(updated.avatarUrl);
       setEditingStudent((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
       );
-      await loadStudents(studentsMeta.offset, search);
+      setStudents((prev) =>
+        prev.map((student) =>
+          student.id === updated.id ? { ...student, avatarUrl: null } : student
+        )
+      );
     } catch (error) {
+      const previousPath = editingStudent.avatarUrl;
+      if (previousPath) {
+        invalidateAvatarCache(previousPath);
+      }
       throw new Error(
         extractApiError(error, "Не удалось удалить аватар студента")
       );

@@ -204,14 +204,16 @@ const AdminDashboard = () => {
       setEditingUser((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl } : prev
       );
-      await Promise.all([
-        loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch),
-        loadDeletedUsers(
-          deletedRole,
-          deletedUsersMeta.offset,
-          deletedUsersSearch
-        ),
-      ]);
+      setActiveUsers((prev) =>
+        prev.map((user) =>
+          user.id === updated.id ? { ...user, avatarUrl: updated.avatarUrl } : user
+        )
+      );
+      setDeletedUsers((prev) =>
+        prev.map((user) =>
+          user.id === updated.id ? { ...user, avatarUrl: updated.avatarUrl } : user
+        )
+      );
     } catch (error) {
       throw new Error(
         extractApiError(error, "Не удалось обновить аватар пользователя")
@@ -225,21 +227,29 @@ const AdminDashboard = () => {
     }
     try {
       const previousPath = editingUser.avatarUrl;
+      if (previousPath) {
+        invalidateAvatarCache(previousPath, { markMissing: true });
+      }
       const updated = await deleteAdminUserAvatar(editingUser.id);
-      invalidateAvatarCache(previousPath);
       invalidateAvatarCache(updated.avatarUrl);
       setEditingUser((prev) =>
         prev ? { ...prev, avatarUrl: updated.avatarUrl ?? null } : prev
       );
-      await Promise.all([
-        loadActiveUsers(activeRole, activeUsersMeta.offset, activeUsersSearch),
-        loadDeletedUsers(
-          deletedRole,
-          deletedUsersMeta.offset,
-          deletedUsersSearch
-        ),
-      ]);
+      setActiveUsers((prev) =>
+        prev.map((user) =>
+          user.id === updated.id ? { ...user, avatarUrl: null } : user
+        )
+      );
+      setDeletedUsers((prev) =>
+        prev.map((user) =>
+          user.id === updated.id ? { ...user, avatarUrl: null } : user
+        )
+      );
     } catch (error) {
+      const previousPath = editingUser.avatarUrl;
+      if (previousPath) {
+        invalidateAvatarCache(previousPath);
+      }
       throw new Error(
         extractApiError(error, "Не удалось удалить аватар пользователя")
       );
