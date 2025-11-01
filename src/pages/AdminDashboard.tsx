@@ -1024,10 +1024,13 @@ const AdminDashboard = () => {
             <Stack
               spacing={6}
               direction={{ base: "column", lg: "row" }}
-              align="flex-start"
+              align="stretch"
             >
               <Box
                 flex={1}
+                maxH="550px"
+                display="flex"
+                flexDirection="column"
                 borderWidth="1px"
                 borderRadius="xl"
                 p={6}
@@ -1063,14 +1066,25 @@ const AdminDashboard = () => {
                     <FormControl>
                       <FormLabel>Электронная почта</FormLabel>
                       <Input
+                        name="dean-contact-email"
+                        type="text"
+                        inputMode="email"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
                         value={form.email ?? ""}
                         onChange={handleChange("email")}
+                        placeholder="user@example.com"
                       />
                     </FormControl>
                     <FormControl isRequired>
                       <FormLabel>Пароль</FormLabel>
                       <Input
+                        name="dean-new-password"
                         type="password"
+                        autoComplete="new-password"
+                        autoCorrect="off"
+                        autoCapitalize="none"
                         value={form.password}
                         onChange={handleChange("password")}
                       />
@@ -1098,6 +1112,9 @@ const AdminDashboard = () => {
               </Box>
               <Box
                 flex={2}
+                maxH="550px"
+                display="flex"
+                flexDirection="column"
                 borderWidth="1px"
                 borderRadius="xl"
                 p={6}
@@ -1155,15 +1172,17 @@ const AdminDashboard = () => {
                     </Button>
                   </HStack>
                 </Box>
-                {deansLoading ? (
-                  <Center py={10}>
-                    <Spinner />
-                  </Center>
-                ) : deans.length === 0 ? (
-                  <Text color="gray.500">Список пуст</Text>
-                ) : (
-                  activeDeansTable
-                )}
+                <Box flex="1" overflowY="auto" overflowX="auto">
+                  {deansLoading ? (
+                    <Center py={10}>
+                      <Spinner />
+                    </Center>
+                  ) : deans.length === 0 ? (
+                    <Text color="gray.500">Список пуст</Text>
+                  ) : (
+                    activeDeansTable
+                  )}
+                </Box>
                 <HStack justify="space-between" mt={4} flexWrap="wrap">
                   <Text fontSize="sm" color="gray.500">
                     Показано {deans.length} из {deansMeta.total}
@@ -1288,7 +1307,7 @@ const AdminDashboard = () => {
                     onClick={() => void handleActiveUsersPageChange(1)}
                     isDisabled={
                       activeUsersMeta.offset + activeUsersMeta.limit >=
-                        activeUsersMeta.total || activeUsersLoading
+                      activeUsersMeta.total || activeUsersLoading
                     }
                   >
                     Следующая
@@ -1392,7 +1411,7 @@ const AdminDashboard = () => {
                     onClick={() => void handleDeletedUsersPageChange(1)}
                     isDisabled={
                       deletedUsersMeta.offset + deletedUsersMeta.limit >=
-                        deletedUsersMeta.total || deletedUsersLoading
+                      deletedUsersMeta.total || deletedUsersLoading
                     }
                   >
                     Следующая
@@ -1473,94 +1492,94 @@ const AdminDashboard = () => {
                   <Input
                     value={editUserForm.firstName}
                     onChange={(event) =>
-                    setEditUserForm((prev) => ({
-                      ...prev,
-                      firstName: event.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
-              <FormControl isRequired>
-                <FormLabel>Фамилия</FormLabel>
-                <Input
-                  value={editUserForm.lastName}
-                  onChange={(event) =>
-                    setEditUserForm((prev) => ({
-                      ...prev,
-                      lastName: event.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Отчество</FormLabel>
-                <Input
-                  value={editUserForm.middleName}
-                  onChange={(event) =>
-                    setEditUserForm((prev) => ({
-                      ...prev,
-                      middleName: event.target.value,
-                    }))
-                  }
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  value={editUserForm.email}
-                  onChange={(event) =>
-                    setEditUserForm((prev) => ({
-                      ...prev,
-                      email: event.target.value,
-                    }))
-                  }
-                  placeholder="user@example.com"
-                />
-              </FormControl>
-              {editingUser?.role === "teacher" && (
-                <>
-                  <FormControl>
-                    <FormLabel>Должность</FormLabel>
-                    <Input
-                      value={editUserForm.title}
-                      onChange={(event) =>
-                        setEditUserForm((prev) => ({
-                          ...prev,
-                          title: event.target.value,
-                        }))
-                      }
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormLabel>Биография</FormLabel>
-                    <Input
-                      value={editUserForm.bio}
-                      onChange={(event) =>
-                        setEditUserForm((prev) => ({
-                          ...prev,
-                          bio: event.target.value,
-                        }))
-                      }
-                      placeholder="Краткая информация"
-                    />
-                  </FormControl>
-                </>
-              )}
-              {editingUser?.role === "dean" && (
-                <FormControl>
-                  <FormLabel>Должность</FormLabel>
-                  <Input
-                    value={editUserForm.position}
-                    onChange={(event) =>
                       setEditUserForm((prev) => ({
                         ...prev,
-                        position: event.target.value,
+                        firstName: event.target.value,
                       }))
                     }
                   />
                 </FormControl>
-              )}
+                <FormControl isRequired>
+                  <FormLabel>Фамилия</FormLabel>
+                  <Input
+                    value={editUserForm.lastName}
+                    onChange={(event) =>
+                      setEditUserForm((prev) => ({
+                        ...prev,
+                        lastName: event.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Отчество</FormLabel>
+                  <Input
+                    value={editUserForm.middleName}
+                    onChange={(event) =>
+                      setEditUserForm((prev) => ({
+                        ...prev,
+                        middleName: event.target.value,
+                      }))
+                    }
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Email</FormLabel>
+                  <Input
+                    type="email"
+                    value={editUserForm.email}
+                    onChange={(event) =>
+                      setEditUserForm((prev) => ({
+                        ...prev,
+                        email: event.target.value,
+                      }))
+                    }
+                    placeholder="user@example.com"
+                  />
+                </FormControl>
+                {editingUser?.role === "teacher" && (
+                  <>
+                    <FormControl>
+                      <FormLabel>Должность</FormLabel>
+                      <Input
+                        value={editUserForm.title}
+                        onChange={(event) =>
+                          setEditUserForm((prev) => ({
+                            ...prev,
+                            title: event.target.value,
+                          }))
+                        }
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel>Биография</FormLabel>
+                      <Input
+                        value={editUserForm.bio}
+                        onChange={(event) =>
+                          setEditUserForm((prev) => ({
+                            ...prev,
+                            bio: event.target.value,
+                          }))
+                        }
+                        placeholder="Краткая информация"
+                      />
+                    </FormControl>
+                  </>
+                )}
+                {editingUser?.role === "dean" && (
+                  <FormControl>
+                    <FormLabel>Должность</FormLabel>
+                    <Input
+                      value={editUserForm.position}
+                      onChange={(event) =>
+                        setEditUserForm((prev) => ({
+                          ...prev,
+                          position: event.target.value,
+                        }))
+                      }
+                    />
+                  </FormControl>
+                )}
               </Stack>
             </Stack>
           </ModalBody>
@@ -1594,9 +1613,8 @@ const AdminDashboard = () => {
             </AlertDialogHeader>
             <AlertDialogBody>
               {confirmAction
-                ? `${confirmMessages[confirmAction.type]} (${
-                    confirmAction.label
-                  })`
+                ? `${confirmMessages[confirmAction.type]} (${confirmAction.label
+                })`
                 : ""}
             </AlertDialogBody>
             <AlertDialogFooter>

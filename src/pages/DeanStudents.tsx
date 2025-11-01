@@ -583,67 +583,77 @@ const DeanStudents = () => {
           </Heading>
           <Stack spacing={3} flex="1">
             <FormControl isRequired>
-            <FormLabel>Имя</FormLabel>
-            <Input
-              value={studentForm.firstName}
-              onChange={(e) =>
-                setStudentForm({ ...studentForm, firstName: e.target.value })
-              }
-            />
+              <FormLabel>Имя</FormLabel>
+              <Input
+                value={studentForm.firstName}
+                onChange={(e) =>
+                  setStudentForm({ ...studentForm, firstName: e.target.value })
+                }
+              />
             </FormControl>
             <FormControl isRequired>
-            <FormLabel>Фамилия</FormLabel>
-            <Input
-              value={studentForm.lastName}
-              onChange={(e) =>
-                setStudentForm({ ...studentForm, lastName: e.target.value })
-              }
-            />
+              <FormLabel>Фамилия</FormLabel>
+              <Input
+                value={studentForm.lastName}
+                onChange={(e) =>
+                  setStudentForm({ ...studentForm, lastName: e.target.value })
+                }
+              />
             </FormControl>
             <FormControl>
-            <FormLabel>Отчество</FormLabel>
-            <Input
-              value={studentForm.middleName}
-              onChange={(e) =>
-                setStudentForm({ ...studentForm, middleName: e.target.value })
-              }
-            />
+              <FormLabel>Отчество</FormLabel>
+              <Input
+                value={studentForm.middleName}
+                onChange={(e) =>
+                  setStudentForm({ ...studentForm, middleName: e.target.value })
+                }
+              />
             </FormControl>
             <FormControl>
-            <FormLabel>Электронная почта</FormLabel>
-            <Input
-              value={studentForm.email}
-              onChange={(e) =>
-                setStudentForm({ ...studentForm, email: e.target.value })
-              }
-              placeholder="student@example.com"
-            />
+              <FormLabel>Электронная почта</FormLabel>
+              <Input
+                name="dean-contact-email"
+                type="text"
+                inputMode="email"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                value={studentForm.email}
+                onChange={(e) =>
+                  setStudentForm({ ...studentForm, email: e.target.value })
+                }
+                placeholder="student@example.com"
+              />
             </FormControl>
             <FormControl>
-            <FormLabel>Группа</FormLabel>
-            <Select
-              placeholder="Выберите группу"
-              value={studentForm.groupId}
-              onChange={(e) =>
-                setStudentForm({ ...studentForm, groupId: e.target.value })
-              }
-            >
-              {groupsOptions.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.label}
-                </option>
-              ))}
-            </Select>
+              <FormLabel>Группа</FormLabel>
+              <Select
+                placeholder="Выберите группу"
+                value={studentForm.groupId}
+                onChange={(e) =>
+                  setStudentForm({ ...studentForm, groupId: e.target.value })
+                }
+              >
+                {groupsOptions.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.label}
+                  </option>
+                ))}
+              </Select>
             </FormControl>
             <FormControl isRequired>
-            <FormLabel>Пароль</FormLabel>
-            <Input
-              type="password"
-              value={studentForm.password}
-              onChange={(e) =>
-                setStudentForm({ ...studentForm, password: e.target.value })
-              }
-            />
+              <FormLabel>Пароль</FormLabel>
+              <Input
+                name="dean-new-password"
+                type="password"
+                autoComplete="new-password"
+                autoCorrect="off"
+                autoCapitalize="none"
+                value={studentForm.password}
+                onChange={(e) =>
+                  setStudentForm({ ...studentForm, password: e.target.value })
+                }
+              />
             </FormControl>
           </Stack>
           <Button
@@ -675,57 +685,60 @@ const DeanStudents = () => {
             Прикрепить студентов к группе
           </Heading>
           <Stack spacing={3} flex="1">
-          <FormControl isRequired>
-            <FormLabel htmlFor={assignmentGroupSelectId}>Группа</FormLabel>
-            <Select
-              id={assignmentGroupSelectId}
-              placeholder="Выберите группу"
-              value={selectedGroup}
-              onChange={(e) => setSelectedGroup(e.target.value)}
-            >
-              {groupsOptions.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.label}
-                </option>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl as="fieldset" isRequired flex="1">
-            <FormLabel as="legend">
-              Студенты <Text as="span" color="red.500">*</Text>
-            </FormLabel>
-            <CheckboxGroup
-              value={selectedStudents}
-              onChange={(values) => setSelectedStudents(values as string[])}
-            >
-              <SimpleGrid
-                columns={{ base: 1, md: 2 }}
-                spacing={1}
-                maxH="auto"
-                overflowY="auto"
-                pr={1}
+            <FormControl isRequired>
+              <FormLabel htmlFor={assignmentGroupSelectId}>Группа</FormLabel>
+              <Select
+                id={assignmentGroupSelectId}
+                placeholder="Выберите группу"
+                value={selectedGroup}
+                onChange={(e) => setSelectedGroup(e.target.value)}
               >
-                {assignableStudents.map((student: any) => (
-                  <Checkbox
-                    key={student.id}
-                    value={student.id}
-                    id={`${studentSelectionFieldId}-${student.id}`}
-                  >
-                    {formatFullName(
-                      student.lastName,
-                      student.firstName,
-                      student.middleName
-                    )}
-                  </Checkbox>
+                {groupsOptions.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.label}
+                  </option>
                 ))}
-              </SimpleGrid>
-            </CheckboxGroup>
-            {assignableStudents.length === 0 && (
-              <Text fontSize="sm" color="gray.500" mt={2}>
-                Все студенты уже состоят в группах. Сначала открепите нужных студентов.
-              </Text>
-            )}
-          </FormControl>
+              </Select>
+            </FormControl>
+            <FormControl as="fieldset" flex="1">
+              <FormLabel as="legend">
+                Студенты <Text as="span" color="red.500">*</Text>
+              </FormLabel>
+              <CheckboxGroup
+                value={selectedStudents}
+                onChange={(values) => setSelectedStudents(values as string[])}
+              >
+                <SimpleGrid
+                  columns={{ base: 1, md: 2 }}
+                  spacing={1}
+                  maxH="auto"
+                  overflowY="auto"
+                  pr={1}
+                >
+                  {assignableStudents.map((student: any, idx: number) => (
+                    <Checkbox
+                      key={student.id}
+                      value={student.id}
+                      id={`${studentSelectionFieldId}-${student.id}`}
+                      name="studentIds"
+                      isRequired={false}
+                      required={idx === 0 && selectedStudents.length === 0}
+                    >
+                      {formatFullName(
+                        student.lastName,
+                        student.firstName,
+                        student.middleName
+                      )}
+                    </Checkbox>
+                  ))}
+                </SimpleGrid>
+              </CheckboxGroup>
+              {assignableStudents.length === 0 && (
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  Все студенты уже состоят в группах. Сначала открепите нужных студентов.
+                </Text>
+              )}
+            </FormControl>
           </Stack>
           <Button
             type="submit"
@@ -1040,10 +1053,10 @@ const DeanStudents = () => {
           <ModalHeader>
             {gradebookStudent
               ? `Оценки студента ${formatFullName(
-                  gradebookStudent.lastName,
-                  gradebookStudent.firstName,
-                  gradebookStudent.middleName
-                )}`
+                gradebookStudent.lastName,
+                gradebookStudent.firstName,
+                gradebookStudent.middleName
+              )}`
               : "Оценки студента"}
           </ModalHeader>
           <ModalCloseButton isDisabled={gradebookLoading || gradeUpdating !== null} />
@@ -1092,8 +1105,8 @@ const DeanStudents = () => {
                               gradeId && gradeDrafts[gradeId] !== undefined
                                 ? gradeDrafts[gradeId]
                                 : session.grade != null
-                                ? Number(session.grade).toFixed(0)
-                                : "";
+                                  ? Number(session.grade).toFixed(0)
+                                  : "";
                             return (
                               <Tr key={session.session.id}>
                                 <Td>

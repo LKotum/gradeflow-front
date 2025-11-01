@@ -136,8 +136,9 @@ const DeanGroups = () => {
       <Heading size="lg" mb={6}>
         Учебные группы
       </Heading>
-      <SimpleGrid columns={{ base: 1, xl: 3 }} spacing={6} alignItems="stretch">
+      <SimpleGrid columns={{ base: 1, xl: 12 }} spacing={6} alignItems="stretch">
         <Box
+          gridColumn={{ xl: "span 3" }}
           as="form"
           borderWidth="1px"
           borderRadius="xl"
@@ -182,6 +183,7 @@ const DeanGroups = () => {
           </Button>
         </Box>
         <Box
+          gridColumn={{ xl: "span 6" }}
           borderWidth="1px"
           borderRadius="xl"
           p={6}
@@ -195,18 +197,18 @@ const DeanGroups = () => {
           <Heading size="md" mb={4}>
             Список групп
           </Heading>
-          <Box flex="1" overflow="auto">
+          <Box flex="1" overflow="auto" overflowX="hidden" minW={0}>
             {isFetching ? (
               <Center py={8}>
                 <Spinner size="lg" thickness="4px" color="brand.500" />
               </Center>
             ) : (
-              <Table size="sm">
+              <Table size="sm" w="full" sx={{ tableLayout: "fixed" }}>
                 <Thead>
                   <Tr>
-                    <Th>Название</Th>
-                    <Th>Описание</Th>
-                    <Th textAlign="right">Действия</Th>
+                    <Th w="32%">Название</Th>
+                    <Th w="58%">Описание</Th>
+                    <Th w="10%" textAlign="right" whiteSpace="nowrap">Действия</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -236,6 +238,7 @@ const DeanGroups = () => {
           </Box>
         </Box>
         <Box
+          gridColumn={{ xl: "span 3" }}
           borderWidth="1px"
           borderRadius="xl"
           p={6}
@@ -257,15 +260,15 @@ const DeanGroups = () => {
             <Table size="sm">
               <Thead>
                 <Tr>
-                  <Th>Группа</Th>
-                  <Th>Средний балл</Th>
+                  <Th textAlign="center">Группа</Th>
+                  <Th textAlign="center">Средний балл</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {rankingList.map((item: any) => (
                   <Tr key={item.group.id}>
-                    <Td>{item.group.name}</Td>
-                    <Td>{item.average ? item.average.toFixed(2) : "."}</Td>
+                    <Td textAlign="center">{item.group.name}</Td>
+                    <Td textAlign="center">{item.average ? item.average.toFixed(2) : "."}</Td>
                   </Tr>
                 ))}
               </Tbody>

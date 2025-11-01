@@ -650,7 +650,12 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={teacherFormFieldIds.email}>Электронная почта</FormLabel>
             <Input
               id={teacherFormFieldIds.email}
-              name="email"
+              name="dean-contact-email"
+              type="text"
+              inputMode="email"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
               value={teacherForm.email}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, email: e.target.value })
@@ -662,7 +667,11 @@ const DeanTeachers = () => {
             <FormLabel htmlFor={teacherFormFieldIds.password}>Пароль</FormLabel>
             <Input
               id={teacherFormFieldIds.password}
+              name="dean-new-password"
               type="password"
+              autoComplete="new-password"
+              autoCorrect="off"
+              autoCapitalize="none"
               value={teacherForm.password}
               onChange={(e) =>
                 setTeacherForm({ ...teacherForm, password: e.target.value })

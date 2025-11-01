@@ -56,17 +56,14 @@ const TeacherDashboard = () => {
   }, []);
 
   const profile = data?.profile ?? null;
-  const avatarSrc = useAvatarImage(profile.avatarUrl);
-  const avatarBg = useMemo(
-    () =>
-      getAvatarAccentColor(
-        profile.id,
-        profile.ins ?? profile.email ?? undefined
-      ),
-    [profile.email, profile.id, profile.ins]
-  );
+  const avatarSrc = useAvatarImage(profile?.avatarUrl || undefined);
+  const avatarBg = useMemo(() => {
+    const seedId = profile?.id ?? "";
+    const seedAlt = profile?.ins ?? profile?.email ?? undefined;
+    return getAvatarAccentColor(seedId, seedAlt);
+  }, [profile?.email, profile?.id, profile?.ins]);
   const showAccent = !avatarSrc;
-  const subjects = Array.isArray(data.subjects) ? data.subjects : [];
+  const subjects = Array.isArray(data?.subjects) ? data.subjects : [];
 
   if (!data) {
     return (
@@ -118,8 +115,8 @@ const TeacherDashboard = () => {
                 profile?.middleName ?? ""
               )}
             </Heading>
-            <Text>ИНС: {data.profile.ins ?? "—"}</Text>
-            <Text>Почта: {data.profile.email ?? "—"}</Text>
+            <Text>ИНС: {profile?.ins ?? "—"}</Text>
+            <Text>Почта: {profile?.email ?? "—"}</Text>
           </Stack>
         </HStack>
       </Box>
@@ -138,29 +135,34 @@ const TeacherDashboard = () => {
             <Text color="gray.500">Закреплённых предметов пока нет</Text>
           </Box>
         ) : (
-          (subjects ?? []).map((item: any) => (
-            <Box
-              key={item.subject.id}
-              borderWidth="1px"
-              borderRadius="xl"
-              p={6}
-              bg={cardBg}
-              boxShadow={cardShadow}
-              transition="transform 0.2s ease, box-shadow 0.2s ease"
-              _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
-            >
-              <Heading size="sm" mb={2}>
-                {item.subject.name}
-              </Heading>
-              <Stack direction="row" spacing={2} wrap="wrap">
-                {item.groups.map((group: any) => (
-                  <Tag key={group.id} colorScheme="brand">
-                    <TagLabel>{group.name}</TagLabel>
-                  </Tag>
-                ))}
-              </Stack>
-            </Box>
-          ))
+          (subjects ?? []).map((item: any, idx: number) => {
+            const subj = item?.subject ?? null;
+            const groups = Array.isArray(item?.groups) ? item.groups : [];
+            if (!subj) return null;
+            return (
+              <Box
+                key={subj.id ?? `subj-${idx}`}
+                borderWidth="1px"
+                borderRadius="xl"
+                p={6}
+                bg={cardBg}
+                boxShadow={cardShadow}
+                transition="transform 0.2s ease, box-shadow 0.2s ease"
+                _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
+              >
+                <Heading size="sm" mb={2}>
+                  {subj.name ?? "Без названия"}
+                </Heading>
+                <Stack direction="row" spacing={2} wrap="wrap">
+                  {groups.map((group: any, gIdx: number) => (
+                    <Tag key={group?.id ?? `grp-${gIdx}`} colorScheme="brand">
+                      <TagLabel>{group?.name ?? "Группа"}</TagLabel>
+                    </Tag>
+                  ))}
+                </Stack>
+              </Box>
+            )
+          })
         )}
       </Stack>
 

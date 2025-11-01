@@ -10,6 +10,7 @@ import {
   Spinner,
   Stack,
   Text,
+  SimpleGrid,
   useColorModeValue,
 } from "@chakra-ui/react";
 import { fetchStudentDashboard, fetchStudentSchedule } from "../api/client";
@@ -56,6 +57,15 @@ const StudentDashboard = () => {
     load();
   }, []);
 
+  const profile = data?.profile ?? null;
+  const avatarSrc = useAvatarImage(profile?.avatarUrl || undefined);
+  const avatarBg = useMemo(() => {
+    const seedId = profile?.id ?? "";
+    const seedAlt = profile?.ins ?? profile?.email ?? undefined;
+    return getAvatarAccentColor(seedId, seedAlt);
+  }, [profile?.id, profile?.ins, profile?.email]);
+  const showAccent = !avatarSrc;
+
   if (loading) {
     return (
       <Center py={16}>
@@ -88,29 +98,17 @@ const StudentDashboard = () => {
     { label: "ИНС", value: data.profile.ins ?? "—", colorScheme: "teal" },
   ];
 
-  const avatarSrc = useAvatarImage(data.profile.avatarUrl);
-  const avatarBg = useMemo(
-    () =>
-      getAvatarAccentColor(
-        data.profile.id,
-        data.profile.ins ?? data.profile.email ?? undefined
-      ),
-    [data.profile.email, data.profile.id, data.profile.ins]
-  );
-  const showAccent = !avatarSrc;
-
   return (
     <Box p={6}>
       <Heading size="lg" mb={4}>
         Личный кабинет студента
       </Heading>
 
-      <Stack
-        spacing={3}
+      <Box
         borderWidth="1px"
         borderRadius="xl"
         p={6}
-        maxW="lg"
+        mb={6}
         bg={cardBg}
         boxShadow={cardShadow}
         transition="transform 0.2s ease, box-shadow 0.2s ease"
@@ -122,37 +120,41 @@ const StudentDashboard = () => {
             bg={showAccent ? avatarBg : undefined}
             color={showAccent ? "white" : undefined}
             name={formatFullName(
-              data.profile.lastName,
-              data.profile.firstName,
-              data.profile.middleName
+              profile?.lastName ?? "",
+              profile?.firstName ?? "",
+              profile?.middleName ?? ""
             )}
-            src={avatarSrc}
+            src={avatarSrc || undefined}
           />
           <Stack spacing={2}>
             <Text fontWeight="semibold">
               {formatFullName(
-                data.profile.lastName,
-                data.profile.firstName,
-                data.profile.middleName
+                profile?.lastName ?? "",
+                profile?.firstName ?? "",
+                profile?.middleName ?? ""
               )}
             </Text>
             <Text>
-              <strong>Почта:</strong> {data.profile.email ?? "—"}
+              <strong>Почта:</strong> {profile?.email ?? "—"}
             </Text>
             <Text>
               <strong>Группа:</strong> {data.group ? data.group.name : "—"}
             </Text>
             <Text>
-              <strong>ИНС:</strong> {data.profile.ins ?? "—"}
+              <strong>ИНС:</strong> {profile?.ins ?? "—"}
             </Text>
           </Stack>
         </HStack>
-      </Stack>
+      </Box>
 
       <Heading size="md" mt={8} mb={3}>
         Быстрая сводка
       </Heading>
-      <Stack spacing={4} maxW="3xl">
+      <SimpleGrid
+        columns={stats.length}     // все карточки в один ряд
+        spacing={4}
+        w="full"                   // на полную ширину контейнера
+      >
         {stats.map((stat) => (
           <Box
             key={stat.label}
@@ -162,6 +164,7 @@ const StudentDashboard = () => {
             py={3}
             bg={cardBg}
             boxShadow={cardShadow}
+            h="100%"
           >
             <Text fontSize="sm" color="gray.500">
               {stat.label}
@@ -178,7 +181,7 @@ const StudentDashboard = () => {
             </Badge>
           </Box>
         ))}
-      </Stack>
+      </SimpleGrid>
 
       <Heading size="md" mt={8} mb={3}>
         Ближайшие занятия
@@ -221,9 +224,9 @@ const StudentDashboard = () => {
                   })}
                   {endsAt
                     ? ` — ${endsAt.toLocaleTimeString("ru-RU", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}`
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
                     : ""}
                 </Text>
                 <Text>
