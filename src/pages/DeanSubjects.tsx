@@ -38,6 +38,7 @@ import {
   fetchDeanTeachers,
   deleteDeanSubject,
 } from "../api/client";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 import { DeleteIcon } from "@chakra-ui/icons";
 
 const PAGE_LIMIT = 200;
@@ -193,8 +194,8 @@ const DeanSubjects = () => {
   );
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={6}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 4, md: 6 }}>
         Предметы и расписание
       </Heading>
       {error && (
@@ -432,7 +433,7 @@ const DeanSubjects = () => {
             <Text color="gray.500">Подготовка данных...</Text>
           </HStack>
         ) : (
-          <Box overflowX="auto">
+          <ResponsiveTableContainer>
             <Table size="sm">
               <Thead>
                 <Tr>
@@ -474,7 +475,7 @@ const DeanSubjects = () => {
                 )}
               </Tbody>
             </Table>
-          </Box>
+          </ResponsiveTableContainer>
         )}
       </Box>
 
@@ -496,7 +497,7 @@ const DeanSubjects = () => {
         ) : scheduleEntries.length === 0 ? (
           <Text color="gray.500">Занятия в выбранном диапазоне не найдены</Text>
         ) : (
-          <Box overflowX="auto">
+          <ResponsiveTableContainer>
             <Table size="sm">
               <Thead>
                 <Tr>
@@ -543,8 +544,8 @@ const DeanSubjects = () => {
                 })}
               </Tbody>
             </Table>
-        </Box>
-      )}
+          </ResponsiveTableContainer>
+        )}
     </Box>
 
       <AlertDialog

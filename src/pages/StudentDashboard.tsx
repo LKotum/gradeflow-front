@@ -99,22 +99,26 @@ const StudentDashboard = () => {
   ];
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={4}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 3, md: 4 }}>
         Личный кабинет студента
       </Heading>
 
       <Box
         borderWidth="1px"
         borderRadius="xl"
-        p={6}
-        mb={6}
+        p={{ base: 4, md: 6 }}
+        mb={{ base: 5, md: 6 }}
         bg={cardBg}
         boxShadow={cardShadow}
         transition="transform 0.2s ease, box-shadow 0.2s ease"
         _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
       >
-        <HStack align="flex-start" spacing={5} flexWrap="wrap">
+        <Stack
+          direction={{ base: "column", md: "row" }}
+          align={{ base: "flex-start", md: "center" }}
+          spacing={{ base: 4, md: 5 }}
+        >
           <Avatar
             size="lg"
             bg={showAccent ? avatarBg : undefined}
@@ -126,7 +130,7 @@ const StudentDashboard = () => {
             )}
             src={avatarSrc || undefined}
           />
-          <Stack spacing={2}>
+          <Stack spacing={2} w="full">
             <Text fontWeight="semibold">
               {formatFullName(
                 profile?.lastName ?? "",
@@ -144,24 +148,28 @@ const StudentDashboard = () => {
               <strong>ИНС:</strong> {profile?.ins ?? "—"}
             </Text>
           </Stack>
-        </HStack>
+        </Stack>
       </Box>
 
-      <Heading size="md" mt={8} mb={3}>
+      <Heading size="md" mt={8} mb={{ base: 3, md: 4 }}>
         Быстрая сводка
       </Heading>
       <SimpleGrid
-        columns={stats.length}     // все карточки в один ряд
-        spacing={4}
-        w="full"                   // на полную ширину контейнера
+        columns={{
+          base: 1,
+          sm: Math.min(2, stats.length),
+          md: stats.length,
+        }}
+        spacing={{ base: 3, md: 4 }}
+        w="full"
       >
         {stats.map((stat) => (
           <Box
             key={stat.label}
             borderWidth="1px"
             borderRadius="xl"
-            px={4}
-            py={3}
+            px={{ base: 4, md: 5 }}
+            py={{ base: 3, md: 4 }}
             bg={cardBg}
             boxShadow={cardShadow}
             h="100%"
@@ -183,7 +191,7 @@ const StudentDashboard = () => {
         ))}
       </SimpleGrid>
 
-      <Heading size="md" mt={8} mb={3}>
+      <Heading size="md" mt={8} mb={{ base: 3, md: 4 }}>
         Ближайшие занятия
       </Heading>
       {scheduleLoading ? (

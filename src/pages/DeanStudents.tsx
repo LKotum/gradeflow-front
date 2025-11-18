@@ -63,6 +63,7 @@ import {
 } from "../api/client";
 import { formatFullName } from "../utils/name";
 import AvatarEditor from "../components/AvatarEditor";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 
 const PAGE_LIMIT = 20;
 
@@ -547,8 +548,8 @@ const DeanStudents = () => {
   };
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={6}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 4, md: 6 }}>
         Управление студентами
       </Heading>
       {error && (
@@ -822,7 +823,7 @@ const DeanStudents = () => {
             </HStack>
           </Box>
         ) : (
-          <Box overflowX="auto">
+          <ResponsiveTableContainer>
             <Table size="sm">
               <Thead>
                 <Tr>
@@ -891,7 +892,7 @@ const DeanStudents = () => {
                 )}
               </Tbody>
             </Table>
-          </Box>
+          </ResponsiveTableContainer>
         )}
       </Box>
 
@@ -953,6 +954,12 @@ const DeanStudents = () => {
                 ml={3}
                 onClick={() => void handleConfirmDetach()}
                 isLoading={detachLoading}
+                h="auto"
+                minH={0}
+                px={4}
+                whiteSpace="normal"
+                lineHeight="short"
+                textAlign="center"
               >
                 Открепить
               </Button>
@@ -1089,7 +1096,8 @@ const DeanStudents = () => {
                       </AccordionButton>
                     </h2>
                     <AccordionPanel pb={4}>
-                      <Table size="sm">
+                      <ResponsiveTableContainer>
+                        <Table size="sm">
                         <Thead>
                           <Tr>
                             <Th>Занятие</Th>
@@ -1152,7 +1160,8 @@ const DeanStudents = () => {
                             );
                           })}
                         </Tbody>
-                      </Table>
+                        </Table>
+                      </ResponsiveTableContainer>
                     </AccordionPanel>
                   </AccordionItem>
                 ))}

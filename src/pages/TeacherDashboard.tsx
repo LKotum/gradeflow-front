@@ -81,21 +81,25 @@ const TeacherDashboard = () => {
   }
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={4}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 3, md: 4 }}>
         Кабинет преподавателя
       </Heading>
       <Box
         borderWidth="1px"
         borderRadius="xl"
-        p={6}
-        mb={6}
+        p={{ base: 4, md: 6 }}
+        mb={{ base: 5, md: 6 }}
         bg={cardBg}
         boxShadow={cardShadow}
         transition="transform 0.2s ease, box-shadow 0.2s ease"
         _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
       >
-        <HStack align="flex-start" spacing={5} flexWrap="wrap">
+        <Stack
+          direction={{ base: "column", md: "row" }}
+          align={{ base: "flex-start", md: "center" }}
+          spacing={{ base: 4, md: 5 }}
+        >
           <Avatar
             size="lg"
             bg={showAccent ? avatarBg : undefined}
@@ -118,9 +122,9 @@ const TeacherDashboard = () => {
             <Text>ИНС: {profile?.ins ?? "—"}</Text>
             <Text>Почта: {profile?.email ?? "—"}</Text>
           </Stack>
-        </HStack>
+        </Stack>
       </Box>
-      <Heading size="md" mb={3}>
+      <Heading size="md" mb={{ base: 3, md: 4 }}>
         Закреплённые предметы
       </Heading>
       <Stack spacing={4}>
@@ -144,7 +148,7 @@ const TeacherDashboard = () => {
                 key={subj.id ?? `subj-${idx}`}
                 borderWidth="1px"
                 borderRadius="xl"
-                p={6}
+                p={{ base: 4, md: 6 }}
                 bg={cardBg}
                 boxShadow={cardShadow}
                 transition="transform 0.2s ease, box-shadow 0.2s ease"
@@ -153,7 +157,11 @@ const TeacherDashboard = () => {
                 <Heading size="sm" mb={2}>
                   {subj.name ?? "Без названия"}
                 </Heading>
-                <Stack direction="row" spacing={2} wrap="wrap">
+                <Stack
+                  direction={{ base: "column", sm: "row" }}
+                  spacing={2}
+                  flexWrap="wrap"
+                >
                   {groups.map((group: any, gIdx: number) => (
                     <Tag key={group?.id ?? `grp-${gIdx}`} colorScheme="brand">
                       <TagLabel>{group?.name ?? "Группа"}</TagLabel>
@@ -166,7 +174,7 @@ const TeacherDashboard = () => {
         )}
       </Stack>
 
-      <Heading size="md" mt={8} mb={3}>
+      <Heading size="md" mt={8} mb={{ base: 3, md: 4 }}>
         Ближайшие занятия
       </Heading>
       {scheduleLoading ? (

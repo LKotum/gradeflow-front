@@ -57,6 +57,7 @@ import {
   updateGrade,
   deleteGrade,
 } from "../api/client";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 
 type GradeEntry = {
   gradeId?: string;
@@ -558,8 +559,8 @@ const TeacherGradeEditor = () => {
   }
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={4}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 3, md: 4 }}>
         Журнал оценок
       </Heading>
       {error && (
@@ -575,13 +576,13 @@ const TeacherGradeEditor = () => {
         mb={6}
         borderWidth="1px"
         borderRadius="xl"
-        p={6}
+        p={{ base: 4, md: 6 }}
         bg={cardBg}
         boxShadow={cardShadow}
         transition="transform 0.2s ease, box-shadow 0.2s ease"
         _hover={{ transform: "translateY(-4px)", boxShadow: "lg" }}
       >
-        <FormControl isRequired>
+        <FormControl isRequired w="full">
           <FormLabel>Предмет</FormLabel>
           <Select
             placeholder="Выберите предмет"
@@ -599,7 +600,7 @@ const TeacherGradeEditor = () => {
             ))}
           </Select>
         </FormControl>
-        <FormControl isRequired>
+        <FormControl isRequired w="full">
           <FormLabel>Группа</FormLabel>
           <Select
             placeholder="Выберите группу"
@@ -624,7 +625,7 @@ const TeacherGradeEditor = () => {
         direction={{ base: "column", md: "row" }}
         spacing={4}
         mb={6}
-        align="center"
+        align={{ base: "stretch", md: "center" }}
       >
         <FormControl maxW={{ base: "100%", md: "320px" }}>
           <FormLabel mb={1}>Фильтр студентов</FormLabel>
@@ -657,13 +658,14 @@ const TeacherGradeEditor = () => {
       ) : !gradeTable || sessionLabels.length === 0 ? (
         <Text color="gray.500">По выбранным параметрам нет занятий.</Text>
       ) : (
-        <Box
+        <ResponsiveTableContainer
           borderWidth="1px"
           borderRadius="xl"
           boxShadow={cardShadow}
           bg={cardBg}
           maxH="70vh"
-          overflow="auto"
+          overflowY="auto"
+          minW="full"
         >
           <Table size="sm" variant="simple">
             <Thead bg={headerBg}>
@@ -768,7 +770,7 @@ const TeacherGradeEditor = () => {
               </Tr>
             </Tbody>
           </Table>
-        </Box>
+        </ResponsiveTableContainer>
       )}
 
       <Modal isOpen={noteModal.isOpen} onClose={noteModal.onClose} size="md">

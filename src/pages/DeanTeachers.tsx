@@ -60,6 +60,7 @@ import {
 } from "../api/client";
 import { formatFullName } from "../utils/name";
 import AvatarEditor from "../components/AvatarEditor";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 
 const extractApiError = (error: unknown, fallback: string) => {
   const axiosError = error as {
@@ -587,8 +588,8 @@ const DeanTeachers = () => {
   );
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={6}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 4, md: 6 }}>
         Управление преподавателями
       </Heading>
       {error && (
@@ -993,7 +994,7 @@ const DeanTeachers = () => {
             </HStack>
           </Box>
         ) : (
-          <Box overflowX="auto">
+          <ResponsiveTableContainer>
             <Table size="sm">
               <Thead>
                 <Tr>
@@ -1048,12 +1049,20 @@ const DeanTeachers = () => {
                                       justify="space-between"
                                       align="center"
                                       spacing={3}
+                                      flexWrap="wrap"
+                                      rowGap={2}
                                     >
                                       <Text>{subject.name || "Без названия"}</Text>
                                       <Button
                                         size="xs"
                                         variant="outline"
                                         colorScheme="red"
+                                        h="auto"
+                                        minH={0}
+                                        px={3}
+                                        lineHeight="short"
+                                        whiteSpace="normal"
+                                        textAlign="center"
                                         onClick={() => {
                                           setPendingDetachAssignment({
                                             subjectId: subject.id,
@@ -1092,7 +1101,7 @@ const DeanTeachers = () => {
                 )}
               </Tbody>
             </Table>
-          </Box>
+          </ResponsiveTableContainer>
         )}
       </Box>
 
@@ -1152,6 +1161,12 @@ const DeanTeachers = () => {
                 colorScheme="red"
                 ml={3}
                 isLoading={detachProcessing}
+                h="auto"
+                minH={0}
+                px={4}
+                whiteSpace="normal"
+                lineHeight="short"
+                textAlign="center"
                 onClick={async () => {
                   if (!pendingDetachAssignment) return;
                   setDetachProcessing(true);

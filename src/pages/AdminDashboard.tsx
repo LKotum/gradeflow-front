@@ -68,6 +68,7 @@ import {
 } from "../api/client";
 import AvatarEditor from "../components/AvatarEditor";
 import { formatFullName } from "../utils/name";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 
 const extractApiError = (error: unknown, fallback: string) => {
   const axiosError = error as {
@@ -762,233 +763,243 @@ const AdminDashboard = () => {
   }, [activeRole, tabIndex]);
 
   const activeDeansTable = (
-    <Table size="sm" variant="simple">
-      <Thead>
-        <Tr>
-          <Th>ФИО</Th>
-          <Th>ИНС</Th>
-          <Th>Почта</Th>
-          <Th textAlign="right">Действия</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {deans.map((dean) => (
-          <Tr key={dean.id} _hover={{ bg: tableHoverBg }}>
-            <Td>
-              {formatFullName(dean.lastName, dean.firstName, dean.middleName)}
-            </Td>
-            <Td>{dean.ins ?? "—"}</Td>
-            <Td>{dean.email ?? "—"}</Td>
-            <Td textAlign="right">
-              <Tooltip label="Удалить" placement="top">
-                <IconButton
-                  aria-label="Удалить"
-                  icon={<DeleteIcon />}
-                  size="sm"
-                  colorScheme="red"
-                  variant="ghost"
-                  onClick={() =>
-                    openConfirmDialog(
-                      "deleteDean",
-                      dean.id,
-                      formatFullName(
-                        dean.lastName,
-                        dean.firstName,
-                        dean.middleName
-                      )
-                    )
-                  }
-                />
-              </Tooltip>
-            </Td>
+    <ResponsiveTableContainer>
+      <Table size="sm" variant="simple">
+        <Thead>
+          <Tr>
+            <Th>ФИО</Th>
+            <Th>ИНС</Th>
+            <Th>Почта</Th>
+            <Th textAlign="right">Действия</Th>
           </Tr>
-        ))}
-      </Tbody>
-    </Table>
-  );
-
-  const activeUsersTable = (
-    <Table size="sm" variant="simple">
-      <Thead>
-        <Tr>
-          <Th>ФИО</Th>
-          <Th>ИНС</Th>
-          <Th>Почта</Th>
-          <Th>Роль</Th>
-          <Th textAlign="right">Действия</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {activeUsers.map((user) => (
-          <Tr key={user.id} _hover={{ bg: tableHoverBg }}>
-            <Td>
-              {formatFullName(user.lastName, user.firstName, user.middleName)}
-            </Td>
-            <Td>{user.ins ?? "—"}</Td>
-            <Td>{user.email ?? "—"}</Td>
-            <Td>
-              <Badge colorScheme="brand">{user.role}</Badge>
-            </Td>
-            <Td textAlign="right">
-              <HStack justify="flex-end" spacing={1}>
-                <Tooltip label="Редактировать профиль" placement="top">
+        </Thead>
+        <Tbody>
+          {deans.map((dean) => (
+            <Tr key={dean.id} _hover={{ bg: tableHoverBg }}>
+              <Td>
+                {formatFullName(dean.lastName, dean.firstName, dean.middleName)}
+              </Td>
+              <Td>{dean.ins ?? "—"}</Td>
+              <Td>{dean.email ?? "—"}</Td>
+              <Td textAlign="right">
+                <Tooltip label="Удалить" placement="top">
                   <IconButton
-                    aria-label="Редактировать профиль"
-                    icon={<EditIcon />}
-                    size="sm"
-                    colorScheme="brand"
-                    variant="ghost"
-                    onClick={() => openEditUser(user)}
-                  />
-                </Tooltip>
-                <Tooltip label="Сбросить пароль" placement="top">
-                  <IconButton
-                    aria-label="Сбросить пароль"
-                    icon={<UnlockIcon />}
-                    size="sm"
-                    colorScheme="blue"
-                    variant="ghost"
-                    onClick={() => openPasswordChangeDialog(user)}
-                  />
-                </Tooltip>
-                <Tooltip label="Удалить пользователя" placement="top">
-                  <IconButton
-                    aria-label="Удалить пользователя"
+                    aria-label="Удалить"
                     icon={<DeleteIcon />}
                     size="sm"
                     colorScheme="red"
                     variant="ghost"
                     onClick={() =>
                       openConfirmDialog(
-                        "deleteUser",
-                        user.id,
+                        "deleteDean",
+                        dean.id,
                         formatFullName(
-                          user.lastName,
-                          user.firstName,
-                          user.middleName
+                          dean.lastName,
+                          dean.firstName,
+                          dean.middleName
                         )
                       )
                     }
                   />
                 </Tooltip>
-              </HStack>
-            </Td>
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </ResponsiveTableContainer>
+  );
+
+  const activeUsersTable = (
+    <ResponsiveTableContainer>
+      <Table size="sm" variant="simple">
+        <Thead>
+          <Tr>
+            <Th>ФИО</Th>
+            <Th>ИНС</Th>
+            <Th>Почта</Th>
+            <Th>Роль</Th>
+            <Th textAlign="right">Действия</Th>
           </Tr>
-        ))}
-      </Tbody>
-    </Table>
+        </Thead>
+        <Tbody>
+          {activeUsers.map((user) => (
+            <Tr key={user.id} _hover={{ bg: tableHoverBg }}>
+              <Td>
+                {formatFullName(user.lastName, user.firstName, user.middleName)}
+              </Td>
+              <Td>{user.ins ?? "—"}</Td>
+              <Td>{user.email ?? "—"}</Td>
+              <Td>
+                <Badge colorScheme="brand">{user.role}</Badge>
+              </Td>
+              <Td textAlign="right">
+                <HStack justify="flex-end" spacing={1}>
+                  <Tooltip label="Редактировать профиль" placement="top">
+                    <IconButton
+                      aria-label="Редактировать профиль"
+                      icon={<EditIcon />}
+                      size="sm"
+                      colorScheme="brand"
+                      variant="ghost"
+                      onClick={() => openEditUser(user)}
+                    />
+                  </Tooltip>
+                  <Tooltip label="Сбросить пароль" placement="top">
+                    <IconButton
+                      aria-label="Сбросить пароль"
+                      icon={<UnlockIcon />}
+                      size="sm"
+                      colorScheme="blue"
+                      variant="ghost"
+                      onClick={() => openPasswordChangeDialog(user)}
+                    />
+                  </Tooltip>
+                  <Tooltip label="Удалить пользователя" placement="top">
+                    <IconButton
+                      aria-label="Удалить пользователя"
+                      icon={<DeleteIcon />}
+                      size="sm"
+                      colorScheme="red"
+                      variant="ghost"
+                      onClick={() =>
+                        openConfirmDialog(
+                          "deleteUser",
+                          user.id,
+                          formatFullName(
+                            user.lastName,
+                            user.firstName,
+                            user.middleName
+                          )
+                        )
+                      }
+                    />
+                  </Tooltip>
+                </HStack>
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </ResponsiveTableContainer>
   );
 
   const deletedUsersTable = (
-    <Table size="sm" variant="simple">
-      <Thead>
-        <Tr>
-          <Th>ФИО</Th>
-          <Th>ИНС</Th>
-          <Th>Почта</Th>
-          <Th>Роль</Th>
-          <Th textAlign="right">Восстановление</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {deletedUsers.map((user) => (
-          <Tr key={user.id} _hover={{ bg: tableHoverBg }}>
-            <Td>
-              {formatFullName(user.lastName, user.firstName, user.middleName)}
-            </Td>
-            <Td>{user.ins ?? "—"}</Td>
-            <Td>{user.email ?? "—"}</Td>
-            <Td>
-              <Badge colorScheme="brand">{user.role}</Badge>
-            </Td>
-            <Td textAlign="right">
-              <IconButton
-                aria-label="Восстановить"
-                icon={<RepeatIcon />}
-                size="sm"
-                colorScheme="brand"
-                variant="ghost"
-                onClick={() =>
-                  openConfirmDialog(
-                    "restoreUser",
-                    user.id,
-                    formatFullName(
-                      user.lastName,
-                      user.firstName,
-                      user.middleName
-                    )
-                  )
-                }
-              />
-            </Td>
+    <ResponsiveTableContainer>
+      <Table size="sm" variant="simple">
+        <Thead>
+          <Tr>
+            <Th>ФИО</Th>
+            <Th>ИНС</Th>
+            <Th>Почта</Th>
+            <Th>Роль</Th>
+            <Th textAlign="right">Восстановление</Th>
           </Tr>
-        ))}
-      </Tbody>
-    </Table>
+        </Thead>
+        <Tbody>
+          {deletedUsers.map((user) => (
+            <Tr key={user.id} _hover={{ bg: tableHoverBg }}>
+              <Td>
+                {formatFullName(user.lastName, user.firstName, user.middleName)}
+              </Td>
+              <Td>{user.ins ?? "—"}</Td>
+              <Td>{user.email ?? "—"}</Td>
+              <Td>
+                <Badge colorScheme="brand">{user.role}</Badge>
+              </Td>
+              <Td textAlign="right">
+                <IconButton
+                  aria-label="Восстановить"
+                  icon={<RepeatIcon />}
+                  size="sm"
+                  colorScheme="brand"
+                  variant="ghost"
+                  onClick={() =>
+                    openConfirmDialog(
+                      "restoreUser",
+                      user.id,
+                      formatFullName(
+                        user.lastName,
+                        user.firstName,
+                        user.middleName
+                      )
+                    )
+                  }
+                />
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </ResponsiveTableContainer>
   );
 
   const deletedGroupsTable = (
-    <Table size="sm" variant="simple">
-      <Thead>
-        <Tr>
-          <Th>Название</Th>
-          <Th>Описание</Th>
-          <Th textAlign="right">Восстановление</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {deletedGroups.map((group) => (
-          <Tr key={group.id} _hover={{ bg: tableHoverBg }}>
-            <Td>{group.name}</Td>
-            <Td>{group.description ?? "—"}</Td>
-            <Td textAlign="right">
-              <IconButton
-                aria-label="Восстановить группу"
-                icon={<RepeatIcon />}
-                size="sm"
-                colorScheme="brand"
-                variant="ghost"
-                onClick={() =>
-                  openConfirmDialog("restoreGroup", group.id, group.name)
-                }
-              />
-            </Td>
+    <ResponsiveTableContainer>
+      <Table size="sm" variant="simple">
+        <Thead>
+          <Tr>
+            <Th>Название</Th>
+            <Th>Описание</Th>
+            <Th textAlign="right">Восстановление</Th>
           </Tr>
-        ))}
-      </Tbody>
-    </Table>
+        </Thead>
+        <Tbody>
+          {deletedGroups.map((group) => (
+            <Tr key={group.id} _hover={{ bg: tableHoverBg }}>
+              <Td>{group.name}</Td>
+              <Td>{group.description ?? "—"}</Td>
+              <Td textAlign="right">
+                <IconButton
+                  aria-label="Восстановить группу"
+                  icon={<RepeatIcon />}
+                  size="sm"
+                  colorScheme="brand"
+                  variant="ghost"
+                  onClick={() =>
+                    openConfirmDialog("restoreGroup", group.id, group.name)
+                  }
+                />
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </ResponsiveTableContainer>
   );
 
   const deletedSubjectsTable = (
-    <Table size="sm" variant="simple">
-      <Thead>
-        <Tr>
-          <Th>Код</Th>
-          <Th>Название</Th>
-          <Th textAlign="right">Восстановление</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {deletedSubjects.map((subject) => (
-          <Tr key={subject.id} _hover={{ bg: tableHoverBg }}>
-            <Td>{subject.code}</Td>
-            <Td>{subject.name}</Td>
-            <Td textAlign="right">
-              <IconButton
-                aria-label="Восстановить предмет"
-                icon={<RepeatIcon />}
-                size="sm"
-                colorScheme="brand"
-                variant="ghost"
-                onClick={() =>
-                  openConfirmDialog("restoreSubject", subject.id, subject.name)
-                }
-              />
-            </Td>
+    <ResponsiveTableContainer>
+      <Table size="sm" variant="simple">
+        <Thead>
+          <Tr>
+            <Th>Код</Th>
+            <Th>Название</Th>
+            <Th textAlign="right">Восстановление</Th>
           </Tr>
-        ))}
-      </Tbody>
-    </Table>
+        </Thead>
+        <Tbody>
+          {deletedSubjects.map((subject) => (
+            <Tr key={subject.id} _hover={{ bg: tableHoverBg }}>
+              <Td>{subject.code}</Td>
+              <Td>{subject.name}</Td>
+              <Td textAlign="right">
+                <IconButton
+                  aria-label="Восстановить предмет"
+                  icon={<RepeatIcon />}
+                  size="sm"
+                  colorScheme="brand"
+                  variant="ghost"
+                  onClick={() =>
+                    openConfirmDialog("restoreSubject", subject.id, subject.name)
+                  }
+                />
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </ResponsiveTableContainer>
   );
 
   const confirmMessages: Record<ConfirmType, string> = {
@@ -1002,8 +1013,8 @@ const AdminDashboard = () => {
   };
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={6}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 4, md: 6 }}>
         Панель администратора
       </Heading>
       <Tabs

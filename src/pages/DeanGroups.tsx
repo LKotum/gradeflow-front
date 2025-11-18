@@ -38,6 +38,7 @@ import {
 } from "../api/client";
 import { formatFullName } from "../utils/name";
 import { DeleteIcon } from "@chakra-ui/icons";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 
 const extractError = (error: unknown, fallback: string) => {
   const axiosError = error as {
@@ -132,8 +133,8 @@ const DeanGroups = () => {
 
   return (
     <>
-      <Box p={6}>
-      <Heading size="lg" mb={6}>
+      <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 4, md: 6 }}>
         Учебные группы
       </Heading>
       <SimpleGrid columns={{ base: 1, xl: 12 }} spacing={6} alignItems="stretch">
@@ -203,7 +204,8 @@ const DeanGroups = () => {
                 <Spinner size="lg" thickness="4px" color="brand.500" />
               </Center>
             ) : (
-              <Table size="sm" w="full" sx={{ tableLayout: "fixed" }}>
+              <ResponsiveTableContainer>
+                <Table size="sm" w="full" sx={{ tableLayout: "fixed" }}>
                 <Thead>
                   <Tr>
                     <Th w="32%">Название</Th>
@@ -233,7 +235,8 @@ const DeanGroups = () => {
                     </Tr>
                   ))}
                 </Tbody>
-              </Table>
+                </Table>
+              </ResponsiveTableContainer>
             )}
           </Box>
         </Box>
@@ -257,7 +260,8 @@ const DeanGroups = () => {
               <Spinner size="lg" thickness="4px" color="brand.500" />
             </Center>
           ) : (
-            <Table size="sm">
+            <ResponsiveTableContainer>
+              <Table size="sm">
               <Thead>
                 <Tr>
                   <Th textAlign="center">Группа</Th>
@@ -272,7 +276,8 @@ const DeanGroups = () => {
                   </Tr>
                 ))}
               </Tbody>
-            </Table>
+              </Table>
+            </ResponsiveTableContainer>
           )}
         </Box>
       </SimpleGrid>
@@ -293,7 +298,8 @@ const DeanGroups = () => {
             <Spinner size="lg" thickness="4px" color="brand.500" />
           </Center>
         ) : (
-          <Table size="sm">
+          <ResponsiveTableContainer>
+            <Table size="sm">
             <Thead>
               <Tr>
                 <Th>Группа</Th>
@@ -322,6 +328,8 @@ const DeanGroups = () => {
                               justify="space-between"
                               align="center"
                               spacing={3}
+                              flexWrap="wrap"
+                              rowGap={2}
                             >
                               <Text>
                                 {formatFullName(
@@ -334,6 +342,12 @@ const DeanGroups = () => {
                                 size="xs"
                                 colorScheme="red"
                                 variant="outline"
+                                h="auto"
+                                minH={0}
+                                px={3}
+                                lineHeight="short"
+                                whiteSpace="normal"
+                                textAlign="center"
                                 onClick={() => {
                                   setDetachContext({
                                     studentId: student.id,
@@ -359,7 +373,8 @@ const DeanGroups = () => {
                 ))
               )}
             </Tbody>
-          </Table>
+            </Table>
+          </ResponsiveTableContainer>
         )}
       </Box>
     </Box>
@@ -446,6 +461,12 @@ const DeanGroups = () => {
                 colorScheme="red"
                 ml={3}
                 isLoading={detachProcessing}
+                h="auto"
+                minH={0}
+                px={4}
+                lineHeight="short"
+                whiteSpace="normal"
+                textAlign="center"
                 onClick={async () => {
                   if (!detachContext) return;
                   setDetachProcessing(true);

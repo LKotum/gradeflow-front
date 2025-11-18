@@ -27,6 +27,7 @@ import {
   useColorModeValue
 } from "@chakra-ui/react";
 import { fetchStudentSubjects, fetchStudentSubjectAverage } from "../api/client";
+import ResponsiveTableContainer from "../components/ResponsiveTableContainer";
 
 const PAGE_LIMIT = 5;
 
@@ -83,14 +84,14 @@ const StudentSubjects = () => {
   };
 
   return (
-    <Box p={6}>
-      <Heading size="lg" mb={4}>
+    <Box p={{ base: 4, md: 6 }}>
+      <Heading size="lg" mb={{ base: 3, md: 4 }}>
         Мои предметы
       </Heading>
       <Box as="form" onSubmit={handleSearch} mb={6} maxW="lg">
         <FormControl>
           <FormLabel htmlFor={searchInputId}>Поиск по названию или коду</FormLabel>
-          <HStack spacing={3}>
+          <Stack direction={{ base: "column", sm: "row" }} spacing={3}>
             <Input
               id={searchInputId}
               value={search}
@@ -100,7 +101,7 @@ const StudentSubjects = () => {
             <Button type="submit" colorScheme="brand" isDisabled={fetching}>
               Найти
             </Button>
-          </HStack>
+          </Stack>
         </FormControl>
       </Box>
 
@@ -141,7 +142,13 @@ const StudentSubjects = () => {
                   bg={panelBg}
                   transition="transform 0.2s ease, box-shadow 0.2s ease"
                 >
-                  <HStack spacing={3} mb={4} justify="space-between">
+                  <Stack
+                    direction={{ base: "column", lg: "row" }}
+                    spacing={3}
+                    mb={4}
+                    justify="space-between"
+                    align={{ base: "stretch", lg: "center" }}
+                  >
                     <Button
                       size="sm"
                       colorScheme="brand"
@@ -155,8 +162,8 @@ const StudentSubjects = () => {
                         По предмету: {aggregate.subjectAverage != null ? aggregate.subjectAverage.toFixed(2) : "."} · По группе: {aggregate.groupAverage != null ? aggregate.groupAverage.toFixed(2) : "."} · Общий: {aggregate.overallAverage != null ? aggregate.overallAverage.toFixed(2) : "."}
                       </Text>
                     )}
-                  </HStack>
-                  <Box borderWidth="1px" borderRadius="xl" overflow="hidden">
+                  </Stack>
+                  <ResponsiveTableContainer borderWidth="1px" borderRadius="xl">
                     <Table size="sm">
                       <Thead bg={tableHeaderBg}>
                         <Tr>
@@ -183,7 +190,7 @@ const StudentSubjects = () => {
                         })}
                       </Tbody>
                     </Table>
-                  </Box>
+                  </ResponsiveTableContainer>
                 </AccordionPanel>
               </AccordionItem>
             );
@@ -191,19 +198,29 @@ const StudentSubjects = () => {
         </Accordion>
       )}
 
-      <HStack justify="space-between" mt={8}>
+      <Stack
+        direction={{ base: "column", md: "row" }}
+        justify="space-between"
+        align={{ base: "flex-start", md: "center" }}
+        spacing={3}
+        mt={8}
+      >
         <Text fontSize="sm" color="gray.500">
           Показано {subjects.length} из {meta.total}
         </Text>
-        <HStack>
+        <HStack spacing={2}>
           <Button size="sm" onClick={() => handlePageChange(-1)} isDisabled={meta.offset === 0 || fetching}>
             Назад
           </Button>
-          <Button size="sm" onClick={() => handlePageChange(1)} isDisabled={meta.offset + meta.limit >= meta.total || fetching}>
+          <Button
+            size="sm"
+            onClick={() => handlePageChange(1)}
+            isDisabled={meta.offset + meta.limit >= meta.total || fetching}
+          >
             Вперёд
           </Button>
         </HStack>
-      </HStack>
+      </Stack>
 
       {fetching && !loading && (
         <Center mt={4}>
