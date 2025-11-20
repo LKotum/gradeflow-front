@@ -467,6 +467,25 @@ const DeanTeachers = () => {
     }
   };
 
+  const handleSessionGroupsChange = useCallback(
+    (values: Array<string | number>) => {
+      const normalizedValues = values.map(String);
+      setSessionForm((prev) => {
+        const addedValue = normalizedValues.find(
+          (value) => !prev.groupIds.includes(value)
+        );
+        if (addedValue) {
+          return { ...prev, groupIds: [addedValue] };
+        }
+        if (normalizedValues.length === 0) {
+          return { ...prev, groupIds: [] };
+        }
+        return prev;
+      });
+    },
+    [setSessionForm]
+  );
+
   const handleDetachTeacher = async (subjectId: string, teacherId: string) => {
     if (!subjectId || !teacherId) {
       return;
@@ -899,15 +918,14 @@ const DeanTeachers = () => {
           </FormLabel>
           <CheckboxGroup
             value={sessionForm.groupIds}
-            onChange={(values) =>
-              setSessionForm({ ...sessionForm, groupIds: values as string[] })
-            }
+            onChange={handleSessionGroupsChange}
           >
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={2}>
               {groupOptions.map((group) => (
                 <Checkbox
                   key={group.id}
                   value={group.id}
+                  isRequired={false}
                   id={`${sessionGroupsFieldId}-${group.id}`}
                 >
                   {group.label}
